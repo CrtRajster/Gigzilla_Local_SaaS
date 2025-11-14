@@ -201,6 +201,14 @@ npm run build  # Build installer
 ✅ **Unified Messaging** - All platforms in one inbox 💎 **KILLER FEATURE #2**
 ✅ **Integrations** - Upwork, Fiverr, Instagram, LinkedIn, WhatsApp, Gmail, SMS
 
+### Accessibility & Inclusion:
+✅ **ADHD Mode** - Interactive ripples for fidgeting (neurodivergent-friendly)
+✅ **Dyslexia Mode** - OpenDyslexic font with optimized spacing
+✅ **Visual Themes** - 7+ themes (Light, Dark, Sepia, Paper, High Contrast, 3 colorblind modes)
+✅ **Auto Theme Switching** - Time-based or system preference
+
+See: [`docs/ACCESSIBILITY-FEATURES.md`](docs/ACCESSIBILITY-FEATURES.md) for complete details.
+
 ---
 
 ## 🎨 UX Philosophy
