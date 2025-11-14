@@ -12,6 +12,7 @@
  * - Email-based authentication (unlimited devices)
  * - JWT tokens (7-day offline grace period)
  * - Referral system (both users get 1 month free)
+ * - Auto-pause fair billing (only pay when working)
  * - Webhook handling (subscription lifecycle)
  */
 
@@ -52,6 +53,14 @@ export default {
 
       if (url.pathname === '/referral-stats' && request.method === 'POST') {
         return handleReferralStats(request, env, stripe, corsHeaders);
+      }
+
+      if (url.pathname === '/pause-subscription' && request.method === 'POST') {
+        return handlePauseSubscription(request, env, stripe, corsHeaders);
+      }
+
+      if (url.pathname === '/resume-subscription' && request.method === 'POST') {
+        return handleResumeSubscription(request, env, stripe, corsHeaders);
       }
 
       if (url.pathname === '/webhook/stripe' && request.method === 'POST') {
@@ -221,6 +230,182 @@ async function handleReferralStats(request, env, stripe, corsHeaders) {
   } catch (error) {
     console.error('❌ Referral stats error:', error);
     return jsonResponse({
+      error: error.message
+    }, 500, corsHeaders);
+  }
+}
+
+/**
+ * Pause subscription (Auto-Pause Fair Billing)
+ * POST /pause-subscription
+ * Body: { email: string }
+ *
+ * Returns:
+ * - success: boolean
+ * - message: string
+ * - pausedAt: ISO timestamp
+ */
+async function handlePauseSubscription(request, env, stripe, corsHeaders) {
+  try {
+    const { email } = await request.json();
+
+    if (!email) {
+      return jsonResponse({
+        success: false,
+        error: 'Email required'
+      }, 400, corsHeaders);
+    }
+
+    console.log('⏸️  Pausing subscription for:', email);
+
+    // Find customer
+    const customers = await stripe.customers.list({
+      email: email.toLowerCase().trim(),
+      limit: 1
+    });
+
+    if (customers.data.length === 0) {
+      return jsonResponse({
+        success: false,
+        error: 'Customer not found'
+      }, 404, corsHeaders);
+    }
+
+    // Find active subscription
+    const subscriptions = await stripe.subscriptions.list({
+      customer: customers.data[0].id,
+      status: 'active',
+      limit: 1
+    });
+
+    if (subscriptions.data.length === 0) {
+      return jsonResponse({
+        success: false,
+        error: 'No active subscription found'
+      }, 404, corsHeaders);
+    }
+
+    const subscription = subscriptions.data[0];
+
+    // Check if already paused
+    if (subscription.pause_collection) {
+      return jsonResponse({
+        success: true,
+        message: 'Subscription is already paused',
+        pausedAt: subscription.metadata.paused_at || null
+      }, 200, corsHeaders);
+    }
+
+    // Pause subscription
+    await stripe.subscriptions.update(subscription.id, {
+      pause_collection: {
+        behavior: 'void'  // Don't charge while paused
+      },
+      metadata: {
+        ...subscription.metadata,
+        paused_at: new Date().toISOString(),
+        paused_reason: 'no_active_projects'
+      }
+    });
+
+    console.log('✅ Subscription paused for:', email);
+
+    return jsonResponse({
+      success: true,
+      message: 'Subscription paused successfully. You won\'t be charged until you resume.',
+      pausedAt: new Date().toISOString()
+    }, 200, corsHeaders);
+
+  } catch (error) {
+    console.error('❌ Pause subscription error:', error);
+    return jsonResponse({
+      success: false,
+      error: error.message
+    }, 500, corsHeaders);
+  }
+}
+
+/**
+ * Resume subscription (Auto-Resume Fair Billing)
+ * POST /resume-subscription
+ * Body: { email: string }
+ *
+ * Returns:
+ * - success: boolean
+ * - message: string
+ * - resumedAt: ISO timestamp
+ */
+async function handleResumeSubscription(request, env, stripe, corsHeaders) {
+  try {
+    const { email } = await request.json();
+
+    if (!email) {
+      return jsonResponse({
+        success: false,
+        error: 'Email required'
+      }, 400, corsHeaders);
+    }
+
+    console.log('▶️  Resuming subscription for:', email);
+
+    // Find customer
+    const customers = await stripe.customers.list({
+      email: email.toLowerCase().trim(),
+      limit: 1
+    });
+
+    if (customers.data.length === 0) {
+      return jsonResponse({
+        success: false,
+        error: 'Customer not found'
+      }, 404, corsHeaders);
+    }
+
+    // Find subscription (include paused ones)
+    const subscriptions = await stripe.subscriptions.list({
+      customer: customers.data[0].id,
+      limit: 1
+    });
+
+    if (subscriptions.data.length === 0) {
+      return jsonResponse({
+        success: false,
+        error: 'No subscription found'
+      }, 404, corsHeaders);
+    }
+
+    const subscription = subscriptions.data[0];
+
+    // Check if paused
+    if (!subscription.pause_collection) {
+      return jsonResponse({
+        success: true,
+        message: 'Subscription is already active'
+      }, 200, corsHeaders);
+    }
+
+    // Resume subscription
+    await stripe.subscriptions.update(subscription.id, {
+      pause_collection: null,  // Remove pause
+      metadata: {
+        ...subscription.metadata,
+        resumed_at: new Date().toISOString(),
+        resume_reason: 'new_project_created'
+      }
+    });
+
+    console.log('✅ Subscription resumed for:', email);
+
+    return jsonResponse({
+      success: true,
+      message: 'Subscription resumed successfully. Welcome back!',
+      resumedAt: new Date().toISOString()
+    }, 200, corsHeaders);
+
+  } catch (error) {
+    console.error('❌ Resume subscription error:', error);
+    return jsonResponse({
+      success: false,
       error: error.message
     }, 500, corsHeaders);
   }

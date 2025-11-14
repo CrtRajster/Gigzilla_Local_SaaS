@@ -64,6 +64,21 @@ Annual: €154,980/year
 - ✅ Infinite scalability (serverless)
 - ✅ Viral growth (referral system)
 
+### 💎 **THE KILLER FEATURE: Auto-Pause Fair Billing**
+
+**"Only pay when you're working. Between gigs? Don't pay!"**
+
+When you have NO active projects and ALL invoices are paid, Gigzilla automatically offers to **pause your subscription** until you start working again.
+
+- ⏸️ **Auto-pause** when no active work
+- ▶️ **Auto-resume** when you create new project
+- 💰 **No charges** while paused
+- 🎉 **Lower churn** - users pause instead of cancel
+
+**This is radically fair billing that NO competitor offers.**
+
+See: [`docs/AUTO-PAUSE-FAIR-BILLING.md`](docs/AUTO-PAUSE-FAIR-BILLING.md) for complete details.
+
 ---
 
 ## 📁 Project Structure
@@ -158,6 +173,7 @@ npm run build  # Build installer
 ✅ **Email-Based Auth** - No license keys, unlimited devices
 ✅ **JWT Offline Mode** - 7-day grace period
 ✅ **Referral System** - Both users get 1 month free
+✅ **Auto-Pause Fair Billing** - Only pay when working 💎 **KILLER FEATURE**
 ✅ **Zero GDPR Liability** - No personal data stored
 
 ### From CLI Version (Features):
