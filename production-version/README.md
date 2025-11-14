@@ -64,7 +64,7 @@ Annual: €154,980/year
 - ✅ Infinite scalability (serverless)
 - ✅ Viral growth (referral system)
 
-### 💎 **THE KILLER FEATURE: Auto-Pause Fair Billing**
+### 💎 **KILLER FEATURE #1: Auto-Pause Fair Billing**
 
 **"Only pay when you're working. Between gigs? Don't pay!"**
 
@@ -78,6 +78,22 @@ When you have NO active projects and ALL invoices are paid, Gigzilla automatical
 **This is radically fair billing that NO competitor offers.**
 
 See: [`docs/AUTO-PAUSE-FAIR-BILLING.md`](docs/AUTO-PAUSE-FAIR-BILLING.md) for complete details.
+
+### 🔗 **KILLER FEATURE #2: Unified Client Messaging**
+
+**"Stop juggling 10 apps. One inbox. All platforms."**
+
+All your client messages from Upwork, Fiverr, Instagram, LinkedIn, WhatsApp, and more - in ONE unified inbox. Reply in Gigzilla, message sends to the original platform automatically.
+
+- 💬 **One inbox** for all platforms
+- 📱 **8+ platforms** supported (Upwork, Fiverr, Instagram, LinkedIn, WhatsApp, Twitter, Discord, Telegram)
+- 🔄 **Reply once** - sends to original platform
+- 🔗 **Auto-links** to projects and clients
+- ⚡ **No context switching** - save hours daily
+
+**NO OTHER TOOL offers multi-platform unified messaging.**
+
+See: [`docs/UNIFIED-CLIENT-MESSAGING.md`](docs/UNIFIED-CLIENT-MESSAGING.md) for complete details.
 
 ---
 
@@ -182,7 +198,8 @@ npm run build  # Build installer
 ✅ **Pipeline View** - Not database tabs, visual workflow
 ✅ **Automation System** - Auto-invoice, auto-remind
 ✅ **Client Management** - Professional relationship tracking
-✅ **Integrations** - Upwork, Gmail, Stripe, SMS
+✅ **Unified Messaging** - All platforms in one inbox 💎 **KILLER FEATURE #2**
+✅ **Integrations** - Upwork, Fiverr, Instagram, LinkedIn, WhatsApp, Gmail, SMS
 
 ---
 
