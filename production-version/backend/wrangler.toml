@@ -1,0 +1,21 @@
+name = "gigzilla-api"
+main = "cloudflare-worker.js"
+compatibility_date = "2024-01-01"
+
+# Cloudflare Worker Configuration
+# Deploy with: wrangler deploy
+
+[vars]
+ENVIRONMENT = "production"
+
+# Environment secrets (add via: wrangler secret put VARIABLE_NAME)
+# STRIPE_SECRET_KEY - Your Stripe secret key (sk_live_xxx)
+# STRIPE_WEBHOOK_SECRET - Stripe webhook signing secret (whsec_xxx)
+# JWT_SECRET - Random 256-bit secret for JWT signing
+
+# Example deployment:
+# 1. wrangler login
+# 2. wrangler secret put STRIPE_SECRET_KEY
+# 3. wrangler secret put STRIPE_WEBHOOK_SECRET
+# 4. wrangler secret put JWT_SECRET
+# 5. wrangler deploy
