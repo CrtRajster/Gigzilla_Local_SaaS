@@ -1,0 +1,16 @@
+{
+  "name": "gigzilla-api",
+  "version": "1.0.0",
+  "description": "Zero-storage API for Gigzilla subscription verification",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "stripe": "^14.9.0"
+  },
+  "devDependencies": {
+    "wrangler": "^3.22.0"
+  }
+}

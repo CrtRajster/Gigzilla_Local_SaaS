@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Activate Gigzilla</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 20px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      max-width: 500px;
+      width: 100%;
+      padding: 40px;
+      text-align: center;
+    }
+
+    .logo {
+      font-size: 48px;
+      margin-bottom: 10px;
+    }
+
+    h1 {
+      font-size: 32px;
+      color: #2d3748;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      font-size: 16px;
+      color: #718096;
+      margin-bottom: 30px;
+    }
+
+    .input-group {
+      margin-bottom: 20px;
+      text-align: left;
+    }
+
+    label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: #4a5568;
+      margin-bottom: 8px;
+    }
+
+    input[type="email"] {
+      width: 100%;
+      padding: 12px 16px;
+      font-size: 16px;
+      border: 2px solid #e2e8f0;
+      border-radius: 8px;
+      transition: border-color 0.2s;
+    }
+
+    input[type="email"]:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 14px 24px;
+      font-size: 16px;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 12px;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+    }
+
+    .btn-secondary {
+      background: #f7fafc;
+      color: #4a5568;
+      border: 2px solid #e2e8f0;
+    }
+
+    .btn-secondary:hover {
+      background: #edf2f7;
+    }
+
+    .divider {
+      margin: 24px 0;
+      text-align: center;
+      position: relative;
+    }
+
+    .divider:before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 50%;
+      width: 100%;
+      height: 1px;
+      background: #e2e8f0;
+    }
+
+    .divider span {
+      background: white;
+      padding: 0 12px;
+      position: relative;
+      color: #a0aec0;
+      font-size: 14px;
+    }
+
+    .pricing {
+      background: #f7fafc;
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 24px;
+      text-align: left;
+    }
+
+    .pricing h3 {
+      font-size: 18px;
+      color: #2d3748;
+      margin-bottom: 12px;
+    }
+
+    .price-option {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .price-option:last-child {
+      border-bottom: none;
+    }
+
+    .price-label {
+      font-size: 14px;
+      color: #4a5568;
+    }
+
+    .price-value {
+      font-size: 18px;
+      font-weight: 700;
+      color: #667eea;
+    }
+
+    .badge {
+      display: inline-block;
+      background: #48bb78;
+      color: white;
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 8px;
+      border-radius: 4px;
+      margin-left: 8px;
+    }
+
+    .message {
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+
+    .message-success {
+      background: #c6f6d5;
+      color: #22543d;
+    }
+
+    .message-error {
+      background: #fed7d7;
+      color: #742a2a;
+    }
+
+    .message-info {
+      background: #bee3f8;
+      color: #2c5282;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .loading {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      border-top-color: white;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">🦍</div>
+    <h1>Welcome to Gigzilla</h1>
+    <p class="subtitle">Manage your freelance business, locally.</p>
+
+    <!-- Message area -->
+    <div id="message" class="message hidden"></div>
+
+    <!-- Email input -->
+    <div class="input-group">
+      <label for="email">Your Email Address</label>
+      <input
+        type="email"
+        id="email"
+        placeholder="you@example.com"
+        autocomplete="email"
+        required
+      />
+    </div>
+
+    <!-- Start Trial Button -->
+    <button class="btn btn-primary" id="startTrialBtn">
+      Start Free Trial (14 Days)
+    </button>
+
+    <div class="divider"><span>or</span></div>
+
+    <!-- Refresh Button (if already subscribed) -->
+    <button class="btn btn-secondary" id="refreshBtn">
+      I Already Subscribed
+    </button>
+
+    <!-- Pricing Info -->
+    <div class="pricing">
+      <h3>💰 Pricing</h3>
+      <div class="price-option">
+        <span class="price-label">Monthly</span>
+        <span class="price-value">€9<span class="badge">POPULAR</span></span>
+      </div>
+      <div class="price-option">
+        <span class="price-label">Annual</span>
+        <span class="price-value">€90 <small style="font-size: 12px; color: #718096;">(save 17%)</small></span>
+      </div>
+      <div class="price-option">
+        <span class="price-label">Lifetime (AppSumo)</span>
+        <span class="price-value">€360</span>
+      </div>
+    </div>
+
+    <p style="margin-top: 20px; font-size: 12px; color: #a0aec0;">
+      ✅ 14-day free trial • ✅ Cancel anytime • ✅ No credit card required for trial
+    </p>
+  </div>
+
+  <script>
+    const { authManager } = require('./auth-manager');
+
+    const emailInput = document.getElementById('email');
+    const startTrialBtn = document.getElementById('startTrialBtn');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const messageDiv = document.getElementById('message');
+
+    // Check for pending email
+    (async () => {
+      const pendingEmail = await electronAPI.storeGet('pending_email');
+      if (pendingEmail) {
+        emailInput.value = pendingEmail;
+        showMessage('Check your browser to complete subscription!', 'info');
+      }
+    })();
+
+    // Start Trial
+    startTrialBtn.addEventListener('click', async () => {
+      const email = emailInput.value.trim();
+
+      if (!email || !email.includes('@')) {
+        showMessage('Please enter a valid email address', 'error');
+        return;
+      }
+
+      try {
+        setLoading(startTrialBtn, true);
+
+        const result = await authManager.startTrial(email);
+
+        showMessage(
+          'Opening subscription page in your browser...\n' +
+          'After subscribing, click "I Already Subscribed" button.',
+          'success'
+        );
+
+      } catch (error) {
+        showMessage('Error: ' + error.message, 'error');
+      } finally {
+        setLoading(startTrialBtn, false);
+      }
+    });
+
+    // Refresh Subscription
+    refreshBtn.addEventListener('click', async () => {
+      const email = emailInput.value.trim();
+
+      if (!email) {
+        showMessage('Please enter your email address', 'error');
+        return;
+      }
+
+      try {
+        setLoading(refreshBtn, true);
+
+        const result = await authManager.checkSubscription(email);
+
+        if (result.isValid) {
+          showMessage('✅ Subscription verified! Loading app...', 'success');
+
+          // Wait 1 second then load main app
+          setTimeout(() => {
+            window.location.href = 'index.html';
+          }, 1000);
+
+        } else {
+          showMessage(
+            result.message || 'No active subscription found. Please subscribe first.',
+            'error'
+          );
+        }
+
+      } catch (error) {
+        showMessage('Error: ' + error.message, 'error');
+      } finally {
+        setLoading(refreshBtn, false);
+      }
+    });
+
+    // Helper: Show message
+    function showMessage(text, type) {
+      messageDiv.textContent = text;
+      messageDiv.className = 'message message-' + type;
+      messageDiv.classList.remove('hidden');
+    }
+
+    // Helper: Set loading state
+    function setLoading(button, loading) {
+      if (loading) {
+        button.disabled = true;
+        button.innerHTML = '<span class="loading"></span>';
+      } else {
+        button.disabled = false;
+        button.innerHTML = button.id === 'startTrialBtn'
+          ? 'Start Free Trial (14 Days)'
+          : 'I Already Subscribed';
+      }
+    }
+
+    // Enter key to start trial
+    emailInput.addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        startTrialBtn.click();
+      }
+    });
+  </script>
+</body>
+</html>
