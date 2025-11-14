@@ -1,0 +1,25 @@
+{
+  "name": "gigzilla-api",
+  "version": "2.0.0",
+  "description": "Zero-storage API for Gigzilla subscription verification",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "tail": "wrangler tail"
+  },
+  "dependencies": {
+    "stripe": "^14.9.0"
+  },
+  "devDependencies": {
+    "wrangler": "^3.22.0"
+  },
+  "keywords": [
+    "cloudflare-worker",
+    "stripe",
+    "subscription",
+    "saas"
+  ],
+  "author": "Gigzilla",
+  "license": "Proprietary"
+}
