@@ -132,8 +132,10 @@ function createActivationWindow() {
 
   activationWindow = new BrowserWindow({
     width: 600,
-    height: 800,
-    resizable: false,
+    height: 650,
+    minWidth: 500,
+    minHeight: 550,
+    resizable: true,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
