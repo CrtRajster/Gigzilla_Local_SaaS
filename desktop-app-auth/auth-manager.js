@@ -13,10 +13,8 @@
  * - Comprehensive error handling
  */
 
-const crypto = require('crypto');
-const os = require('os');
-const { networkInterfaces } = require('os');
 const { shell } = require('electron');
+const machineId = require('./machine-id');
 
 // Configuration
 const API_URL = process.env.API_URL || 'https://gigzilla-api.YOUR-USERNAME.workers.dev';
@@ -25,56 +23,6 @@ const STRIPE_CHECKOUT_URL = process.env.STRIPE_CHECKOUT_URL || 'https://gigzilla
 // Re-validation settings
 const REVALIDATION_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
 const OFFLINE_GRACE_PERIOD = 7 * 24 * 60 * 60 * 1000; // 7 days
-
-/**
- * Generate a unique, hardware-based machine ID
- * Uses MAC address, hostname, and platform info
- * Returns SHA-256 hash for privacy and uniqueness
- */
-function generateMachineId() {
-  try {
-    const interfaces = networkInterfaces();
-    const platform = os.platform();
-    const hostname = os.hostname();
-    const arch = os.arch();
-
-    // Get MAC addresses from all network interfaces
-    const macAddresses = [];
-    for (const name of Object.keys(interfaces)) {
-      for (const iface of interfaces[name]) {
-        // Skip internal and non-physical interfaces
-        if (!iface.internal && iface.mac !== '00:00:00:00:00:00') {
-          macAddresses.push(iface.mac);
-        }
-      }
-    }
-
-    // Sort MAC addresses for consistency
-    macAddresses.sort();
-
-    // Create unique fingerprint
-    const fingerprint = [
-      platform,
-      hostname,
-      arch,
-      ...macAddresses
-    ].join('|');
-
-    // Hash with SHA-256 for privacy
-    const hash = crypto.createHash('sha256').update(fingerprint).digest('hex');
-
-    console.log('[MACHINE_ID] Generated machine ID:', hash.substring(0, 16) + '...');
-
-    return hash;
-
-  } catch (error) {
-    console.error('[MACHINE_ID] Error generating machine ID:', error);
-
-    // Fallback: use hostname + platform
-    const fallback = `${os.hostname()}_${os.platform()}_${os.arch()}`;
-    return crypto.createHash('sha256').update(fallback).digest('hex');
-  }
-}
 
 /**
  * Validate JWT token locally (for offline mode)
@@ -163,20 +111,21 @@ async function startTrial(email) {
  * Registers device if not already registered
  * Returns JWT token for offline mode
  */
-async function validateLicense(email, machineId = null) {
+async function validateLicense(email, providedMachineId = null) {
   try {
     // Generate machine ID if not provided
-    if (!machineId) {
-      machineId = generateMachineId();
+    let machineIdValue = providedMachineId;
+    if (!machineIdValue) {
+      machineIdValue = await machineId.getMachineId();
     }
 
     console.log('[VALIDATE] Validating license for:', email);
-    console.log('[VALIDATE] Machine ID:', machineId.substring(0, 16) + '...');
+    console.log('[VALIDATE] Machine ID:', machineIdValue.substring(0, 16) + '...');
 
     const response = await fetch(`${API_URL}/api/validate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, machine_id: machineId })
+      body: JSON.stringify({ email, machine_id: machineIdValue })
     });
 
     const data = await response.json();
@@ -188,7 +137,7 @@ async function validateLicense(email, machineId = null) {
       await electronAPI.storeSet('auth_token', data.offline_token);
       await electronAPI.storeSet('token_expiry', data.offline_valid_until);
       await electronAPI.storeSet('user_email', email);
-      await electronAPI.storeSet('machine_id', machineId);
+      await electronAPI.storeSet('machine_id', machineIdValue);
       await electronAPI.storeSet('license_data', JSON.stringify(data.license));
       await electronAPI.storeSet('last_validation', new Date().toISOString());
 
@@ -230,7 +179,8 @@ async function checkSubscription(email) {
     const tokenExpiry = await electronAPI.storeGet('token_expiry');
     const lastValidation = await electronAPI.storeGet('last_validation');
     const storedEmail = await electronAPI.storeGet('user_email');
-    const machineId = await electronAPI.storeGet('machine_id') || generateMachineId();
+    const storedMachineId = await electronAPI.storeGet('machine_id');
+    const currentMachineId = storedMachineId || await machineId.getMachineId();
 
     // Check if we need to revalidate (email changed or 24h passed)
     const needsRevalidation =
@@ -265,7 +215,7 @@ async function checkSubscription(email) {
 
     // Try online validation
     try {
-      const result = await validateLicense(email, machineId);
+      const result = await validateLicense(email, currentMachineId);
 
       if (result.valid) {
         return {
@@ -725,12 +675,18 @@ module.exports = {
   getCurrentUser,
 
   // Utilities
-  generateMachineId,
   generateReferralCode,
   validateJWT,
   needsRevalidation,
   getOfflineStatus,
   validateOnStartup,
+
+  // Machine ID management (from machine-id module)
+  getMachineId: machineId.getMachineId,
+  clearMachineId: machineId.clearMachineId,
+  detectHardwareChange: machineId.detectHardwareChange,
+  getMachineInfo: machineId.getMachineInfo,
+  isVirtualMachine: machineId.isVirtualMachine,
 
   // Cleanup
   logout
