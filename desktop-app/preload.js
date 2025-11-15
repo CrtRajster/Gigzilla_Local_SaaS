@@ -138,18 +138,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
 });
 
 // ============================================
-// GLOBAL FETCH POLYFILL
-// ============================================
-
-/**
- * Ensure fetch is available in renderer
- * (Electron has fetch built-in, but this ensures compatibility)
- */
-if (typeof window !== 'undefined' && !window.fetch) {
-  window.fetch = require('node-fetch');
-}
-
-// ============================================
 // CONSOLE LOGGING
 // ============================================
 
