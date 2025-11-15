@@ -168,7 +168,107 @@ Files to modify:
 
 ---
 
-### ☐ Task 4.3: Add Subscription Management UI
+### ☐ Task 4.3: Build Profile & Settings System
+
+**Copy-Paste Prompt:**
+```
+Build the foundational Profile & Settings system for Gigzilla.
+
+Reference design document:
+- claude_code_version/PROFILE-AND-NOTIFICATIONS.md
+
+This is a FOUNDATIONAL feature that other features will reference (invoices, notifications, automation).
+
+1. Database Schema (SQLite):
+   Create tables in desktop app SQLite database:
+
+   - user_profile table:
+     - name, business_name, email, phone, photo_path
+     - timezone, country, tax_id
+     - created_at, updated_at
+
+   - payment_accounts table:
+     - provider (paypal, stripe, bank)
+     - account_email, account_identifier
+     - is_active
+
+   - notification_preferences table:
+     - channel (desktop, email, sms, whatsapp)
+     - event_type (payment_received, invoice_overdue, etc.)
+     - enabled (boolean)
+     - settings (JSON for custom settings)
+
+2. Profile Page UI:
+   Create desktop-app/src/views/settings.js with tabs:
+
+   Tab 1: Profile
+   - Basic info (name, business name, photo upload)
+   - Contact methods (email, phone, WhatsApp)
+   - Payment details (PayPal, Stripe, bank transfer info)
+   - Location & tax (country, timezone, tax ID)
+   - Save/cancel buttons
+
+   Tab 2: Notifications
+   - Notification channels (Desktop, Email, SMS, WhatsApp)
+   - Per-event notification settings:
+     - Payment received
+     - Invoice overdue
+     - Deadline reminders
+     - Project completed
+   - Enable/disable toggles for each channel per event
+
+   Tab 3: Connections (Future - placeholder for now)
+   - PayPal connection status
+   - Stripe connection status
+   - Other integrations (Upwork, Fiverr, etc.)
+
+3. Navigation Integration:
+   - Add "Settings" nav item in desktop-app/index.html sidebar
+   - Update app.js to handle settings view routing
+   - Icon: ⚙️ Settings
+
+4. Profile Manager Service:
+   Create desktop-app/src/services/profile-manager.js:
+   - loadProfile() - get user profile from SQLite
+   - saveProfile(data) - update profile
+   - getNotificationPreferences(eventType) - get notification settings
+   - updateNotificationPreference(channel, eventType, enabled)
+   - getPaymentAccounts() - get all payment methods
+
+5. First-Time Setup Wizard:
+   Create desktop-app/src/components/profile-wizard.html
+   - Modal that appears on first launch (after activation)
+   - 4 steps: Basic Info → Contact → Payments → Notifications
+   - Skip option (can complete later)
+   - Store "wizard_completed" flag in profile
+
+6. Profile Completeness Indicator:
+   - Show profile completion % at top of settings page
+   - Suggest missing items (e.g., "Add phone for SMS notifications")
+
+Files to create:
+- desktop-app/src/views/settings.js (main settings view)
+- desktop-app/src/services/profile-manager.js (profile service)
+- desktop-app/src/components/profile-wizard.html (optional first-time wizard)
+- desktop-app/src/database/profile-schema.sql (schema definitions)
+
+Files to modify:
+- desktop-app/index.html (add Settings nav item)
+- desktop-app/src/app.js (add settings routing)
+- desktop-app/src/database/db-manager.js (add profile tables)
+
+UI Design Style:
+- Use existing liquid glass design aesthetic
+- Match current Gigzilla UI patterns (Dashboard, Pipeline, etc.)
+- Clean, modern forms with proper validation
+- Responsive layout
+
+IMPORTANT: This feature is foundational. Later features (invoices, automation) will reference profile data.
+```
+
+---
+
+### ☐ Task 4.4: Add Subscription Management UI
 
 **Copy-Paste Prompt:**
 ```
@@ -1160,9 +1260,10 @@ Create new directory:
 - [x] Build core freelancer UI
 - [x] Implement local SQLite storage
 
-**PHASE 4: STRIPE INTEGRATION** 🔄
+**PHASE 4: STRIPE INTEGRATION & ACCOUNT FEATURES** 🔄
 - [x] Create checkout flow
 - [ ] Implement referral system
+- [ ] Build profile & settings system
 - [ ] Add subscription management UI
 
 **PHASE 5: ADVANCED FEATURES** ☐
