@@ -6,7 +6,7 @@
  *
  * Features:
  * - Secure storage API (electron-store)
- * - IPC communication
+ * - Database operations IPC
  * - System information
  * - No direct Node.js access to renderer
  */
@@ -55,34 +55,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
 
   // ==========================================
-  // LICENSE MANAGEMENT
+  // DATABASE & IPC OPERATIONS
   // ==========================================
 
   /**
-   * Get current license state
-   * @returns {Promise<object>} License state
-   */
-  getLicenseState: () => {
-    return ipcRenderer.invoke('get-license-state');
-  },
-
-  /**
-   * Refresh license from server
-   * @returns {Promise<object>} Updated license state
-   */
-  refreshLicense: () => {
-    return ipcRenderer.invoke('refresh-license');
-  },
-
-  /**
-   * Notify main process that license was activated
-   */
-  licenseActivated: () => {
-    ipcRenderer.send('license-activated');
-  },
-
-  /**
-   * Generic IPC invoke for database operations and auth
+   * Generic IPC invoke for database operations
    * @param {string} channel - IPC channel name
    * @param {...any} args - Arguments to pass
    * @returns {Promise<any>} Result from main process
@@ -97,9 +74,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
       'db:getStats', 'db:getClientStats', 'db:getRecentActivities',
       'db:getSetting', 'db:setSetting', 'db:getAllSettings',
       'db:backup', 'db:restore', 'db:importData',
-      'db:generateId', 'db:generateInvoiceNumber', 'db:getDefaultDueDate',
-      // Auth operations
-      'auth:validateLicense', 'auth:checkSubscription', 'auth:refreshSubscription'
+      'db:generateId', 'db:generateInvoiceNumber', 'db:getDefaultDueDate'
     ];
 
     if (allowedChannels.includes(channel)) {
@@ -151,7 +126,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   on: (channel, callback) => {
     const validChannels = [
       'show-notification',
-      'license-updated',
       'new-client',
       'new-project',
       'export-data',
