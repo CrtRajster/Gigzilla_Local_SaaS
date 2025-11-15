@@ -116,23 +116,16 @@ app.post('/api/license-info', async (req, res) => {
 // Create Stripe Checkout Session
 app.post('/api/create-checkout-session', async (req, res) => {
   try {
-    const { email, tier, billing_period } = req.body;
+    const { email, billing_period } = req.body;
 
-    if (!email || !tier || !billing_period) {
+    if (!email || !billing_period) {
       return res.status(400).json({
         success: false,
-        error: 'Missing required parameters: email, tier, billing_period'
+        error: 'Missing required parameters: email, billing_period'
       });
     }
 
-    // Validate tier and billing period
-    if (!['pro', 'business'].includes(tier)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid tier. Must be "pro" or "business"'
-      });
-    }
-
+    // Validate billing period
     if (!['monthly', 'annual'].includes(billing_period)) {
       return res.status(400).json({
         success: false,
@@ -140,20 +133,18 @@ app.post('/api/create-checkout-session', async (req, res) => {
       });
     }
 
-    // Get the correct Stripe Price ID based on tier and billing period
+    // Get the correct Stripe Price ID based on billing period
     const priceIdMap = {
-      'pro_monthly': process.env.STRIPE_PRO_MONTHLY_PRICE_ID,
-      'pro_annual': process.env.STRIPE_PRO_ANNUAL_PRICE_ID,
-      'business_monthly': process.env.STRIPE_BUSINESS_MONTHLY_PRICE_ID,
-      'business_annual': process.env.STRIPE_BUSINESS_ANNUAL_PRICE_ID
+      'monthly': process.env.STRIPE_MONTHLY_PRICE_ID,
+      'annual': process.env.STRIPE_ANNUAL_PRICE_ID
     };
 
-    const priceId = priceIdMap[`${tier}_${billing_period}`];
+    const priceId = priceIdMap[billing_period];
 
     if (!priceId) {
       return res.status(500).json({
         success: false,
-        error: 'Price ID not configured for this tier and billing period'
+        error: 'Price ID not configured for this billing period'
       });
     }
 
@@ -176,13 +167,13 @@ app.post('/api/create-checkout-session', async (req, res) => {
       cancel_url: `${process.env.APP_URL || 'http://localhost:3000'}/checkout/cancel`,
       metadata: {
         email: email,
-        tier: tier,
+        tier: 'pro', // Single tier, always 'pro'
         billing_period: billing_period
       },
       subscription_data: {
         metadata: {
           email: email,
-          tier: tier,
+          tier: 'pro', // Single tier, always 'pro'
           billing_period: billing_period
         }
       },
@@ -190,7 +181,7 @@ app.post('/api/create-checkout-session', async (req, res) => {
       billing_address_collection: 'auto'
     });
 
-    console.log(`[CHECKOUT] Created session for ${email} - ${tier} ${billing_period}`);
+    console.log(`[CHECKOUT] Created session for ${email} - ${billing_period}`);
     console.log(`[CHECKOUT] Session URL: ${session.url}`);
 
     res.json({

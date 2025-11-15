@@ -1,12 +1,11 @@
 /**
  * Upgrade Flow
- * Handles Stripe Checkout integration for Pro and Business tier upgrades
+ * Handles Stripe Checkout integration for Gigzilla Pro subscription
  */
 
 class UpgradeFlow {
   constructor() {
     this.API_URL = process.env.API_URL || 'http://localhost:3000';
-    this.selectedTier = null;
     this.selectedPeriod = 'monthly';
     this.isProcessing = false;
   }
@@ -15,6 +14,10 @@ class UpgradeFlow {
    * Render upgrade pricing UI
    */
   render() {
+    const monthlyPrice = 9;
+    const annualPrice = 90;
+    const monthlySavings = Math.round(((monthlyPrice * 12 - annualPrice) / (monthlyPrice * 12)) * 100);
+
     return `
       <div class="upgrade-container">
         <div class="upgrade-header">
@@ -31,61 +34,43 @@ class UpgradeFlow {
           <button class="billing-btn ${this.selectedPeriod === 'annual' ? 'active' : ''}"
                   onclick="upgradeFlow.selectPeriod('annual')">
             Annual
-            <span class="save-badge">Save 20%</span>
+            <span class="save-badge">Save ${monthlySavings}%</span>
           </button>
         </div>
 
-        <!-- Pricing Cards -->
-        <div class="pricing-grid">
-          <!-- Pro Plan -->
-          <div class="pricing-card ${this.selectedTier === 'pro' ? 'selected' : ''}"
-               onclick="upgradeFlow.selectTier('pro')">
+        <!-- Single Pricing Card -->
+        <div class="pricing-grid-single">
+          <div class="pricing-card pricing-card-featured">
+            <div class="popular-badge">BEST VALUE</div>
             <div class="plan-header">
-              <h3 class="plan-name">Pro</h3>
+              <h3 class="plan-name">Gigzilla Pro</h3>
               <div class="plan-price">
-                ${this.selectedPeriod === 'monthly' ? '$29' : '$24'}
-                <span class="price-period">/${this.selectedPeriod === 'monthly' ? 'mo' : 'mo'}</span>
+                €${this.selectedPeriod === 'monthly' ? monthlyPrice : Math.round(annualPrice / 12)}
+                <span class="price-period">/mo</span>
               </div>
-              ${this.selectedPeriod === 'annual' ? '<div class="billing-note">Billed $288/year</div>' : ''}
+              ${this.selectedPeriod === 'annual' ? `<div class="billing-note">Billed €${annualPrice}/year</div>` : ''}
+              ${this.selectedPeriod === 'monthly' ? `<div class="billing-note">Billed monthly</div>` : ''}
             </div>
             <div class="plan-features">
               <div class="feature">✓ Unlimited projects</div>
               <div class="feature">✓ Unlimited clients</div>
               <div class="feature">✓ Invoice management</div>
               <div class="feature">✓ Payment tracking</div>
+              <div class="feature">✓ Revenue analytics</div>
               <div class="feature">✓ Email support</div>
               <div class="feature">✓ Up to 3 devices</div>
+              <div class="feature">✓ All future updates</div>
             </div>
-            <button class="btn ${this.selectedTier === 'pro' ? 'btn-primary' : 'btn-secondary'}"
-                    onclick="upgradeFlow.startCheckout('pro', '${this.selectedPeriod}')">
-              ${this.selectedTier === 'pro' ? 'Select Pro →' : 'Choose Pro'}
+            <button class="btn btn-primary btn-lg"
+                    onclick="upgradeFlow.startCheckout('${this.selectedPeriod}')"
+                    style="margin-top: 24px; width: 100%; padding: 16px; font-size: 16px; font-weight: 600;">
+              ${this.selectedPeriod === 'monthly' ? `Subscribe for €${monthlyPrice}/mo →` : `Subscribe for €${annualPrice}/year →`}
             </button>
-          </div>
-
-          <!-- Business Plan -->
-          <div class="pricing-card pricing-card-featured ${this.selectedTier === 'business' ? 'selected' : ''}"
-               onclick="upgradeFlow.selectTier('business')">
-            <div class="popular-badge">MOST POPULAR</div>
-            <div class="plan-header">
-              <h3 class="plan-name">Business</h3>
-              <div class="plan-price">
-                ${this.selectedPeriod === 'monthly' ? '$79' : '$66'}
-                <span class="price-period">/${this.selectedPeriod === 'monthly' ? 'mo' : 'mo'}</span>
+            ${this.selectedPeriod === 'annual' ? `
+              <div style="text-align: center; margin-top: 12px; font-size: 13px; color: var(--gray-500);">
+                That's just €${Math.round(annualPrice / 12)}/month, save €${monthlyPrice * 12 - annualPrice}/year
               </div>
-              ${this.selectedPeriod === 'annual' ? '<div class="billing-note">Billed $792/year</div>' : ''}
-            </div>
-            <div class="plan-features">
-              <div class="feature">✓ Everything in Pro</div>
-              <div class="feature">✓ Priority support</div>
-              <div class="feature">✓ Team collaboration (coming soon)</div>
-              <div class="feature">✓ Advanced analytics (coming soon)</div>
-              <div class="feature">✓ API access (coming soon)</div>
-              <div class="feature">✓ Up to 10 devices</div>
-            </div>
-            <button class="btn ${this.selectedTier === 'business' ? 'btn-primary' : 'btn-secondary'}"
-                    onclick="upgradeFlow.startCheckout('business', '${this.selectedPeriod}')">
-              ${this.selectedTier === 'business' ? 'Select Business →' : 'Choose Business'}
-            </button>
+            ` : ''}
           </div>
         </div>
 
@@ -136,17 +121,9 @@ class UpgradeFlow {
   }
 
   /**
-   * Select tier (pro/business)
-   */
-  selectTier(tier) {
-    this.selectedTier = tier;
-    this.refreshUI();
-  }
-
-  /**
    * Start Stripe Checkout flow
    */
-  async startCheckout(tier, billingPeriod) {
+  async startCheckout(billingPeriod) {
     try {
       this.isProcessing = true;
       this.refreshUI();
@@ -160,7 +137,7 @@ class UpgradeFlow {
         throw new Error('No email found. Please start a trial first.');
       }
 
-      console.log('[UPGRADE] Creating checkout session for:', email, tier, billingPeriod);
+      console.log('[UPGRADE] Creating checkout session for:', email, billingPeriod);
 
       // Call backend to create Stripe Checkout session
       const response = await fetch(`${this.API_URL}/api/create-checkout-session`, {
@@ -168,7 +145,6 @@ class UpgradeFlow {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: email,
-          tier: tier,
           billing_period: billingPeriod
         })
       });
@@ -184,14 +160,13 @@ class UpgradeFlow {
 
       // Store checkout info for success detection
       await window.electronAPI.storeSet('pending_checkout_session', data.session_id);
-      await window.electronAPI.storeSet('pending_tier', tier);
       await window.electronAPI.storeSet('pending_billing_period', billingPeriod);
 
       // Open Stripe Checkout in system browser
       await window.electronAPI.openExternal(data.checkout_url);
 
       // Show success message
-      this.showCheckoutOpened(tier, billingPeriod);
+      this.showCheckoutOpened(billingPeriod);
 
       // Start polling for checkout success
       this.startCheckoutPolling(email);
@@ -207,9 +182,9 @@ class UpgradeFlow {
   /**
    * Show message that checkout was opened in browser
    */
-  showCheckoutOpened(tier, billingPeriod) {
-    const tierName = tier.charAt(0).toUpperCase() + tier.slice(1);
+  showCheckoutOpened(billingPeriod) {
     const periodName = billingPeriod === 'monthly' ? 'Monthly' : 'Annual';
+    const amount = billingPeriod === 'monthly' ? '€9/month' : '€90/year';
 
     window.gigzillaApp?.showModal('Checkout Opened', `
       <div style="text-align: center; padding: 24px 0;">
@@ -218,7 +193,7 @@ class UpgradeFlow {
           Stripe Checkout opened in your browser
         </div>
         <div style="font-size: 14px; color: var(--gray-600); margin-bottom: 24px;">
-          Complete your ${tierName} ${periodName} subscription checkout
+          Complete your ${periodName} subscription checkout (${amount})
         </div>
         <div style="background: var(--gray-50); padding: 16px; border-radius: 8px; font-size: 13px; color: var(--gray-700);">
           💡 After completing payment, return to Gigzilla and we'll automatically activate your subscription
@@ -332,19 +307,16 @@ class UpgradeFlow {
 
     // Clear pending checkout data
     await window.electronAPI.storeDelete('pending_checkout_session');
-    await window.electronAPI.storeDelete('pending_tier');
     await window.electronAPI.storeDelete('pending_billing_period');
 
     this.isProcessing = false;
 
     // Show success message
-    const tierName = license.tier.charAt(0).toUpperCase() + license.tier.slice(1);
-
     window.gigzillaApp?.showModal('Upgrade Successful! 🎉', `
       <div style="text-align: center; padding: 24px 0;">
         <div style="font-size: 64px; margin-bottom: 24px;">✨</div>
         <div style="font-size: 24px; font-weight: 700; margin-bottom: 8px;">
-          Welcome to Gigzilla ${tierName}!
+          Welcome to Gigzilla Pro!
         </div>
         <div style="font-size: 14px; color: var(--gray-600); margin-bottom: 24px;">
           Your subscription is now active
@@ -352,8 +324,9 @@ class UpgradeFlow {
         <div style="background: var(--green-50); border: 1px solid var(--green-200); padding: 16px; border-radius: 8px;">
           <div style="font-size: 13px; color: var(--green-800);">
             ✓ Unlimited projects and clients<br>
-            ✓ Invoice management<br>
-            ✓ Multi-device support (${license.max_devices} devices)
+            ✓ Invoice management and tracking<br>
+            ✓ Revenue analytics<br>
+            ✓ Multi-device support (${license.max_devices || 3} devices)
           </div>
         </div>
       </div>
@@ -374,7 +347,6 @@ class UpgradeFlow {
    */
   async cancelCheckout() {
     await window.electronAPI.storeDelete('pending_checkout_session');
-    await window.electronAPI.storeDelete('pending_tier');
     await window.electronAPI.storeDelete('pending_billing_period');
     this.isProcessing = false;
     this.refreshUI();
