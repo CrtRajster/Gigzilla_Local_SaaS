@@ -16,10 +16,9 @@ This checklist covers all accounts and services needed to develop and deploy Gig
   - [ ] Secret Key (sk_test_...)
   - [ ] Publishable Key (pk_test_...)
 - [ ] Create Products in Test Mode:
-  - [ ] Pro Monthly (€9/month) - Get Price ID
-  - [ ] Business Monthly (€19/month) - Get Price ID
-  - [ ] Pro Annual (€90/year) - Get Price ID
-  - [ ] Business Annual (€180/year) - Get Price ID
+  - [ ] Gigzilla Pro (€9/month, 3 devices) - Get Price ID
+  - [ ] Gigzilla Pro Annual (€90/year, 3 devices) - Get Price ID
+  - [ ] Gigzilla Pro Lifetime (€360 one-time, 3 devices, AppSumo exclusive) - Get Price ID
 - [ ] Set up Test Webhook Endpoint:
   - [ ] Install Stripe CLI: https://stripe.com/docs/stripe-cli
   - [ ] Run `stripe login` to authenticate
@@ -251,10 +250,12 @@ SERVICE: Gigzilla Development Accounts
 STRIPE (Test)
 - Email: [your-email]
 - Dashboard: https://dashboard.stripe.com
-- Secret Key: sk_test_... (store in password manager)
-- Webhook Secret: whsec_... (store in password manager)
-- Pro Monthly Price ID: price_...
-- Business Monthly Price ID: price_...
+- Secret Key: sk_test_... (from Stripe Dashboard)
+- Publishable Key: pk_test_... (from Stripe Dashboard)
+- Webhook Secret: whsec_... (add after deployment)
+- Pro Monthly Price ID: price_... (from Gigzilla Pro product)
+- Pro Annual Price ID: price_... (from Gigzilla Pro Annual product)
+- Pro Lifetime Price ID: price_... (from Gigzilla Pro Lifetime product)
 
 CLOUDFLARE
 - Email: [your-email]
