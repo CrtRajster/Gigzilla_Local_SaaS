@@ -16,6 +16,7 @@
     "dist": "electron-builder"
   },
   "dependencies": {
+    "better-sqlite3": "^9.6.0",
     "electron-store": "^8.1.0"
   },
   "devDependencies": {
@@ -33,6 +34,7 @@
       "preload.js",
       "index.html",
       "loading.html",
+      "src/**/*",
       "../desktop-app-auth/**/*"
     ],
     "mac": {

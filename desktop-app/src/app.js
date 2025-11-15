@@ -52,7 +52,7 @@ class GigzillaApp {
     this.updateActiveNav();
   }
 
-  renderCurrentView() {
+  async renderCurrentView() {
     const container = document.getElementById('main-content');
     if (!container) {
       console.error('[APP] Main content container not found');
@@ -60,11 +60,11 @@ class GigzillaApp {
     }
 
     const view = this.views[this.currentView];
-    container.innerHTML = view.render();
+    container.innerHTML = await view.render();
   }
 
-  refreshCurrentView() {
-    this.renderCurrentView();
+  async refreshCurrentView() {
+    await this.renderCurrentView();
   }
 
   updateActiveNav() {
@@ -158,14 +158,14 @@ class GigzillaApp {
       {
         label: 'Create Client',
         class: 'btn-primary',
-        onclick: () => {
+        onclick: async () => {
           const name = document.getElementById('new-client-name').value.trim();
           if (!name) {
             alert('Please enter a company name');
             return;
           }
 
-          this.store.addClient({
+          await this.store.addClient({
             name: name,
             email: document.getElementById('new-client-email').value.trim(),
             phone: document.getElementById('new-client-phone').value.trim(),
@@ -173,7 +173,7 @@ class GigzillaApp {
           });
 
           this.closeModal();
-          this.refreshCurrentView();
+          await this.refreshCurrentView();
         }
       },
       {
@@ -188,8 +188,8 @@ class GigzillaApp {
   // NEW PROJECT MODAL
   // ==========================================
 
-  showNewProjectModal(preselectedClientId = null) {
-    const clients = this.store.getAllClients();
+  async showNewProjectModal(preselectedClientId = null) {
+    const clients = await this.store.getAllClients();
 
     this.showModal('✨ New Project', `
       <div class="form-field">
@@ -231,7 +231,7 @@ class GigzillaApp {
       {
         label: 'Create Project',
         class: 'btn-primary',
-        onclick: () => {
+        onclick: async () => {
           const name = document.getElementById('new-project-name').value.trim();
           const amount = parseFloat(document.getElementById('new-project-amount').value);
 
@@ -253,7 +253,7 @@ class GigzillaApp {
             if (selectedValue === '__new__') {
               const clientName = prompt('Enter new client name:');
               if (!clientName) return;
-              const newClient = this.store.addClient({ name: clientName });
+              const newClient = await this.store.addClient({ name: clientName });
               clientId = newClient.id;
             } else {
               clientId = selectedValue;
@@ -264,11 +264,11 @@ class GigzillaApp {
               alert('Please enter a client name');
               return;
             }
-            const newClient = this.store.addClient({ name: clientName });
+            const newClient = await this.store.addClient({ name: clientName });
             clientId = newClient.id;
           }
 
-          this.store.addProject({
+          await this.store.addProject({
             name: name,
             clientId: clientId,
             amount: amount,
@@ -277,7 +277,7 @@ class GigzillaApp {
           });
 
           this.closeModal();
-          this.refreshCurrentView();
+          await this.refreshCurrentView();
         }
       },
       {
@@ -292,9 +292,10 @@ class GigzillaApp {
   // NEW INVOICE MODAL
   // ==========================================
 
-  showNewInvoiceModal() {
-    const projects = this.store.getAllProjects().filter(p => p.status === 'done' || p.status === 'working');
-    const clients = this.store.getAllClients();
+  async showNewInvoiceModal() {
+    const allProjects = await this.store.getAllProjects();
+    const projects = allProjects.filter(p => p.status === 'done' || p.status === 'working');
+    const clients = await this.store.getAllClients();
 
     this.showModal('📧 New Invoice', `
       <div class="form-field">
@@ -318,7 +319,7 @@ class GigzillaApp {
       </div>
       <div class="form-field">
         <label class="form-label">Due Date</label>
-        <input type="date" class="form-input" id="new-invoice-duedate" value="${this.store.getDefaultDueDate()}">
+        <input type="date" class="form-input" id="new-invoice-duedate" value="${await this.store.getDefaultDueDate()}">
       </div>
       <div class="form-field">
         <label class="form-label">Notes</label>
@@ -328,7 +329,7 @@ class GigzillaApp {
       {
         label: 'Create Invoice',
         class: 'btn-primary',
-        onclick: () => {
+        onclick: async () => {
           const clientId = document.getElementById('new-invoice-client').value;
           const amount = parseFloat(document.getElementById('new-invoice-amount').value);
 
@@ -339,7 +340,7 @@ class GigzillaApp {
 
           const projectId = document.getElementById('new-invoice-project').value || null;
 
-          this.store.addInvoice({
+          await this.store.addInvoice({
             clientId: clientId,
             projectId: projectId,
             amount: amount,
@@ -348,7 +349,7 @@ class GigzillaApp {
           });
 
           this.closeModal();
-          this.refreshCurrentView();
+          await this.refreshCurrentView();
         }
       },
       {
@@ -359,13 +360,13 @@ class GigzillaApp {
     ]);
   }
 
-  updateProjectsForClient() {
+  async updateProjectsForClient() {
     const clientId = document.getElementById('new-invoice-client').value;
     const projectSelect = document.getElementById('new-invoice-project');
 
     if (!clientId || !projectSelect) return;
 
-    const projects = this.store.getProjectsByClient(clientId);
+    const projects = await this.store.getProjectsByClient(clientId);
     projectSelect.innerHTML = `
       <option value="">Select a project...</option>
       ${projects.map(project => `

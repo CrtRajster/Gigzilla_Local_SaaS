@@ -81,6 +81,32 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.send('license-activated');
   },
 
+  /**
+   * Generic IPC invoke for database operations
+   * @param {string} channel - IPC channel name
+   * @param {...any} args - Arguments to pass
+   * @returns {Promise<any>} Result from main process
+   */
+  invoke: (channel, ...args) => {
+    // Whitelist allowed channels for security
+    const allowedChannels = [
+      'db:addClient', 'db:getClient', 'db:getAllClients', 'db:updateClient', 'db:deleteClient', 'db:searchClients',
+      'db:addProject', 'db:getProject', 'db:getAllProjects', 'db:getProjectsByStatus', 'db:getProjectsByClient', 'db:updateProject', 'db:deleteProject',
+      'db:addInvoice', 'db:getInvoice', 'db:getAllInvoices', 'db:getInvoicesByStatus', 'db:getOverdueInvoices', 'db:updateInvoice', 'db:deleteInvoice',
+      'db:getStats', 'db:getClientStats', 'db:getRecentActivities',
+      'db:getSetting', 'db:setSetting', 'db:getAllSettings',
+      'db:backup', 'db:restore', 'db:importData',
+      'db:generateId', 'db:generateInvoiceNumber', 'db:getDefaultDueDate'
+    ];
+
+    if (allowedChannels.includes(channel)) {
+      return ipcRenderer.invoke(channel, ...args);
+    } else {
+      console.warn('[PRELOAD] Blocked unauthorized IPC channel:', channel);
+      return Promise.reject(new Error(`Unauthorized IPC channel: ${channel}`));
+    }
+  },
+
   // ==========================================
   // SYSTEM INFORMATION
   // ==========================================

@@ -9,8 +9,8 @@ class PipelineView {
     this.draggedProject = null;
   }
 
-  render() {
-    const projects = this.store.getAllProjects();
+  async render() {
+    const projects = await this.store.getAllProjects();
     const statuses = [
       { key: 'to_start', label: 'To Start', icon: '📋' },
       { key: 'working', label: 'Working', icon: '⚡' },
@@ -91,20 +91,20 @@ class PipelineView {
     event.currentTarget.style.background = 'rgba(59, 130, 246, 0.1)';
   }
 
-  handleDrop(event, newStatus) {
+  async handleDrop(event, newStatus) {
     event.preventDefault();
     event.currentTarget.style.background = '';
 
     if (this.draggedProject) {
-      this.store.updateProject(this.draggedProject, { status: newStatus });
+      await this.store.updateProject(this.draggedProject, { status: newStatus });
       gigzillaApp.refreshCurrentView();
       this.draggedProject = null;
     }
   }
 
-  showProjectDetails(projectId) {
-    const project = this.store.getProject(projectId);
-    const client = this.store.getClient(project.clientId);
+  async showProjectDetails(projectId) {
+    const project = await this.store.getProject(projectId);
+    const client = await this.store.getClient(project.clientId);
 
     gigzillaApp.showModal('Project Details', `
       <div style="margin-bottom: 16px;">

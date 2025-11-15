@@ -8,10 +8,10 @@ class DashboardView {
     this.store = store;
   }
 
-  render() {
-    const stats = this.store.getStats();
-    const overdueInvoices = this.store.getOverdueInvoices();
-    const recentActivities = this.store.getRecentActivities(5);
+  async render() {
+    const stats = await this.store.getStats();
+    const overdueInvoices = await this.store.getOverdueInvoices();
+    const recentActivities = await this.store.getRecentActivities(5);
 
     return `
       <div class="dashboard-grid">

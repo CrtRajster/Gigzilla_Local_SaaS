@@ -19,6 +19,10 @@ const Store = require('electron-store');
 // Import authentication manager
 const authManager = require('../desktop-app-auth/auth-manager');
 
+// Import database service
+const DatabaseService = require('./src/database/database-service');
+let databaseService = null;
+
 // Initialize secure storage
 const store = new Store({
   name: 'gigzilla-license',
@@ -42,6 +46,10 @@ let licenseState = {
 
 app.whenReady().then(async () => {
   console.log('[MAIN] App ready, initializing...');
+
+  // Initialize database
+  databaseService = new DatabaseService();
+  databaseService.initialize();
 
   // Show loading screen
   createLoadingWindow();
@@ -82,6 +90,13 @@ app.whenReady().then(async () => {
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
+  }
+});
+
+app.on('before-quit', () => {
+  // Close database connection
+  if (databaseService) {
+    databaseService.close();
   }
 });
 
