@@ -319,6 +319,130 @@ Host: your-worker.workers.dev
 
 ---
 
+### Get Active Devices
+
+Get list of all devices registered to a license.
+
+**Endpoint:** `POST /api/devices`
+
+**Request:**
+```http
+POST /api/devices HTTP/1.1
+Host: your-worker.workers.dev
+Content-Type: application/json
+
+{
+  "email": "user@example.com"
+}
+```
+
+**Response:** `200 OK` (Devices Found)
+```json
+{
+  "found": true,
+  "devices": [
+    {
+      "id": "3a7f9c2e1b4d8f6a...",
+      "preview": "3a7f9c2e...8f6a",
+      "registeredAt": "2025-01-13T12:00:00.000Z",
+      "index": 0
+    },
+    {
+      "id": "7b2c4d8e3f9a1c5d...",
+      "preview": "7b2c4d8e...1c5d",
+      "registeredAt": "2025-01-13T12:00:00.000Z",
+      "index": 1
+    }
+  ],
+  "devices_used": 2,
+  "max_devices": 3
+}
+```
+
+**Response:** `200 OK` (No Devices)
+```json
+{
+  "found": false,
+  "devices": []
+}
+```
+
+**Response:** `400 Bad Request`
+```json
+{
+  "error": "INVALID_EMAIL",
+  "message": "Please provide a valid email address"
+}
+```
+
+---
+
+### Deactivate Device
+
+Deactivate a specific device, removing it from the license and freeing up a slot.
+
+**Endpoint:** `POST /api/deactivate-device`
+
+**Request:**
+```http
+POST /api/deactivate-device HTTP/1.1
+Host: your-worker.workers.dev
+Content-Type: application/json
+
+{
+  "email": "user@example.com",
+  "machine_id": "3a7f9c2e1b4d8f6a..."
+}
+```
+
+**Response:** `200 OK` (Success)
+```json
+{
+  "success": true,
+  "message": "Device deactivated successfully",
+  "devices_remaining": 1,
+  "max_devices": 3
+}
+```
+
+**Response:** `404 Not Found` (Device Not Registered)
+```json
+{
+  "success": false,
+  "error": "DEVICE_NOT_FOUND",
+  "message": "This device is not registered to your license"
+}
+```
+
+**Response:** `404 Not Found` (No Customer)
+```json
+{
+  "success": false,
+  "error": "NO_CUSTOMER",
+  "message": "No license found for this email"
+}
+```
+
+**Response:** `400 Bad Request` (Invalid Email)
+```json
+{
+  "success": false,
+  "error": "INVALID_EMAIL",
+  "message": "Please provide a valid email address"
+}
+```
+
+**Response:** `400 Bad Request` (Invalid Machine ID)
+```json
+{
+  "success": false,
+  "error": "INVALID_MACHINE_ID",
+  "message": "Invalid device identifier"
+}
+```
+
+---
+
 ### Stripe Webhook
 
 Handle Stripe webhook events.
@@ -452,8 +576,36 @@ Each license tier has a **device limit** (default: 3 devices).
    - If `devices_used >= max_devices`: Reject with `MAX_DEVICES_REACHED`
 3. Registered devices can validate unlimited times
 
-**Deactivating a device:**
-Currently, users cannot manually deactivate devices. This feature needs to be implemented in future updates.
+**Managing devices:**
+
+Users can view and manage their registered devices using the device management endpoints:
+
+1. **List devices**: Use `POST /api/devices` to see all registered devices
+   - Shows device ID preview (first 8 + last 4 characters)
+   - Shows registration date
+   - Shows total devices used vs. max allowed
+
+2. **Deactivate a device**: Use `POST /api/deactivate-device` to remove a device
+   - Removes device from license, freeing up a slot
+   - Allows user to install on a different machine
+   - Useful when replacing hardware or switching computers
+
+**Example workflow:**
+```
+1. User has 3/3 devices registered
+2. User wants to install on a new laptop
+3. User calls /api/devices to see all registered devices
+4. User identifies old desktop to deactivate
+5. User calls /api/deactivate-device with old desktop's machine_id
+6. Slot freed: now 2/3 devices
+7. User can install on new laptop successfully
+```
+
+**Security notes:**
+- Device deactivation requires email + machine_id verification
+- Only the device owner (email) can deactivate their devices
+- Machine IDs are hashed (SHA-256) for privacy
+- Last deactivation timestamp is tracked in metadata
 
 ---
 

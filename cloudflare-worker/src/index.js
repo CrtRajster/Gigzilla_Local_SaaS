@@ -50,6 +50,14 @@ export default {
         return handleReferralStats(request, env, stripe, corsHeaders);
       }
 
+      if (url.pathname === '/api/devices' && request.method === 'POST') {
+        return handleGetDevices(request, env, stripe, corsHeaders);
+      }
+
+      if (url.pathname === '/api/deactivate-device' && request.method === 'POST') {
+        return handleDeactivateDevice(request, env, stripe, corsHeaders);
+      }
+
       if (url.pathname === '/webhook/stripe' && request.method === 'POST') {
         return handleStripeWebhook(request, env, stripe);
       }
@@ -517,6 +525,166 @@ async function handleReferralStats(request, env, stripe, corsHeaders) {
     console.error('[REFERRAL_STATS] Error:', error);
     return jsonResponse({
       error: 'SERVER_ERROR'
+    }, 500, corsHeaders);
+  }
+}
+
+/**
+ * Get list of registered devices
+ * POST /api/devices
+ * Body: { email: string }
+ */
+async function handleGetDevices(request, env, stripe, corsHeaders) {
+  try {
+    const { email } = await request.json();
+
+    // Validate email
+    if (!email || !isValidEmail(email)) {
+      console.warn('[GET_DEVICES] Invalid email:', email);
+      return jsonResponse({
+        error: 'INVALID_EMAIL',
+        message: 'Please provide a valid email address'
+      }, 400, corsHeaders);
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    console.log('[GET_DEVICES] Fetching devices for:', normalizedEmail);
+
+    // Find customer
+    const customers = await stripe.customers.list({
+      email: normalizedEmail,
+      limit: 1
+    });
+
+    if (customers.data.length === 0) {
+      console.warn('[GET_DEVICES] No customer found for:', normalizedEmail);
+      return jsonResponse({
+        found: false,
+        devices: []
+      }, 200, corsHeaders);
+    }
+
+    const customer = customers.data[0];
+    const metadata = customer.metadata || {};
+    const machineIds = JSON.parse(metadata.machine_ids || '[]');
+    const maxDevices = parseInt(metadata.max_devices || '3');
+
+    console.log('[GET_DEVICES] ✅ Found', machineIds.length, 'devices');
+
+    // Build device list with previews
+    const devices = machineIds.map((machineId, index) => ({
+      id: machineId,
+      preview: machineId.substring(0, 8) + '...' + machineId.substring(machineId.length - 4),
+      registeredAt: metadata.last_validated || metadata.created_at || null,
+      index: index
+    }));
+
+    return jsonResponse({
+      found: true,
+      devices: devices,
+      devices_used: machineIds.length,
+      max_devices: maxDevices
+    }, 200, corsHeaders);
+
+  } catch (error) {
+    console.error('[GET_DEVICES] Error:', error);
+    return jsonResponse({
+      error: 'SERVER_ERROR',
+      message: error.message
+    }, 500, corsHeaders);
+  }
+}
+
+/**
+ * Deactivate a device (remove from license)
+ * POST /api/deactivate-device
+ * Body: { email: string, machine_id: string }
+ */
+async function handleDeactivateDevice(request, env, stripe, corsHeaders) {
+  try {
+    const { email, machine_id } = await request.json();
+
+    // Validate input
+    if (!email || !isValidEmail(email)) {
+      console.warn('[DEACTIVATE_DEVICE] Invalid email:', email);
+      return jsonResponse({
+        success: false,
+        error: 'INVALID_EMAIL',
+        message: 'Please provide a valid email address'
+      }, 400, corsHeaders);
+    }
+
+    if (!machine_id || machine_id.length < 10) {
+      console.warn('[DEACTIVATE_DEVICE] Invalid machine_id');
+      return jsonResponse({
+        success: false,
+        error: 'INVALID_MACHINE_ID',
+        message: 'Invalid device identifier'
+      }, 400, corsHeaders);
+    }
+
+    const normalizedEmail = email.toLowerCase().trim();
+    console.log('[DEACTIVATE_DEVICE] Deactivating device for:', normalizedEmail);
+    console.log('[DEACTIVATE_DEVICE] Machine ID:', machine_id.substring(0, 8) + '...');
+
+    // Find customer
+    const customers = await stripe.customers.list({
+      email: normalizedEmail,
+      limit: 1
+    });
+
+    if (customers.data.length === 0) {
+      console.warn('[DEACTIVATE_DEVICE] No customer found for:', normalizedEmail);
+      return jsonResponse({
+        success: false,
+        error: 'NO_CUSTOMER',
+        message: 'No license found for this email'
+      }, 404, corsHeaders);
+    }
+
+    const customer = customers.data[0];
+    const metadata = customer.metadata || {};
+    const machineIds = JSON.parse(metadata.machine_ids || '[]');
+
+    console.log('[DEACTIVATE_DEVICE] Current devices:', machineIds.length);
+
+    // Check if device exists
+    if (!machineIds.includes(machine_id)) {
+      console.warn('[DEACTIVATE_DEVICE] Device not found:', machine_id.substring(0, 8) + '...');
+      return jsonResponse({
+        success: false,
+        error: 'DEVICE_NOT_FOUND',
+        message: 'This device is not registered to your license'
+      }, 404, corsHeaders);
+    }
+
+    // Remove device
+    const updatedMachineIds = machineIds.filter(id => id !== machine_id);
+
+    // Update customer metadata
+    await stripe.customers.update(customer.id, {
+      metadata: {
+        ...metadata,
+        machine_ids: JSON.stringify(updatedMachineIds),
+        last_deactivation: new Date().toISOString()
+      }
+    });
+
+    console.log('[DEACTIVATE_DEVICE] ✅ Device deactivated. Remaining:', updatedMachineIds.length);
+
+    return jsonResponse({
+      success: true,
+      message: 'Device deactivated successfully',
+      devices_remaining: updatedMachineIds.length,
+      max_devices: parseInt(metadata.max_devices || '3')
+    }, 200, corsHeaders);
+
+  } catch (error) {
+    console.error('[DEACTIVATE_DEVICE] Error:', error);
+    return jsonResponse({
+      success: false,
+      error: 'SERVER_ERROR',
+      message: error.message
     }, 500, corsHeaders);
   }
 }

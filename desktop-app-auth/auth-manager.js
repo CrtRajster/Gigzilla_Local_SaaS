@@ -521,6 +521,117 @@ async function getCurrentUser() {
 }
 
 /**
+ * Get list of active devices registered to license
+ */
+async function getActiveDevices(email) {
+  try {
+    console.log('[GET_DEVICES] Getting active devices for:', email);
+
+    const response = await fetch(`${API_URL}/api/devices`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+
+    const data = await response.json();
+
+    if (data.found) {
+      console.log('[GET_DEVICES] ✅ Found', data.devices.length, 'devices');
+      return {
+        success: true,
+        devices: data.devices,
+        devicesUsed: data.devices_used,
+        maxDevices: data.max_devices
+      };
+    } else {
+      return {
+        success: true,
+        devices: [],
+        devicesUsed: 0,
+        maxDevices: 3
+      };
+    }
+
+  } catch (error) {
+    console.error('[GET_DEVICES] Error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Deactivate a specific device
+ * Removes device from license, freeing up a slot
+ */
+async function deactivateDevice(email, machineIdToRemove) {
+  try {
+    console.log('[DEACTIVATE_DEVICE] Deactivating device for:', email);
+    console.log('[DEACTIVATE_DEVICE] Machine ID:', machineIdToRemove.substring(0, 8) + '...');
+
+    const response = await fetch(`${API_URL}/api/deactivate-device`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, machine_id: machineIdToRemove })
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      console.log('[DEACTIVATE_DEVICE] ✅ Device deactivated successfully');
+      return {
+        success: true,
+        message: data.message,
+        devicesRemaining: data.devices_remaining,
+        maxDevices: data.max_devices
+      };
+    } else {
+      console.error('[DEACTIVATE_DEVICE] Failed:', data.error);
+      return {
+        success: false,
+        error: data.error,
+        message: data.message
+      };
+    }
+
+  } catch (error) {
+    console.error('[DEACTIVATE_DEVICE] Error:', error);
+    throw error;
+  }
+}
+
+/**
+ * Deactivate current device
+ * Convenience function to deactivate the device the app is running on
+ */
+async function deactivateCurrentDevice() {
+  try {
+    console.log('[DEACTIVATE_CURRENT] Deactivating current device...');
+
+    const email = await electronAPI.storeGet('user_email');
+    const currentMachineId = await machineId.getMachineId();
+
+    if (!email) {
+      throw new Error('No user logged in');
+    }
+
+    const result = await deactivateDevice(email, currentMachineId);
+
+    if (result.success) {
+      // Clear local data after deactivation
+      await machineId.clearMachineId();
+      await logout();
+
+      console.log('[DEACTIVATE_CURRENT] ✅ Current device deactivated and data cleared');
+    }
+
+    return result;
+
+  } catch (error) {
+    console.error('[DEACTIVATE_CURRENT] Error:', error);
+    throw error;
+  }
+}
+
+/**
  * Log out (clear local data)
  */
 async function logout() {
@@ -673,6 +784,11 @@ module.exports = {
   getLicenseInfo,
   getReferralStats,
   getCurrentUser,
+
+  // Device management
+  getActiveDevices,
+  deactivateDevice,
+  deactivateCurrentDevice,
 
   // Utilities
   generateReferralCode,
