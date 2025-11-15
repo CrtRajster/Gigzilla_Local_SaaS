@@ -82,7 +82,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
 
   /**
-   * Generic IPC invoke for database operations
+   * Generic IPC invoke for database operations and auth
    * @param {string} channel - IPC channel name
    * @param {...any} args - Arguments to pass
    * @returns {Promise<any>} Result from main process
@@ -90,13 +90,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   invoke: (channel, ...args) => {
     // Whitelist allowed channels for security
     const allowedChannels = [
+      // Database operations
       'db:addClient', 'db:getClient', 'db:getAllClients', 'db:updateClient', 'db:deleteClient', 'db:searchClients',
       'db:addProject', 'db:getProject', 'db:getAllProjects', 'db:getProjectsByStatus', 'db:getProjectsByClient', 'db:updateProject', 'db:deleteProject',
       'db:addInvoice', 'db:getInvoice', 'db:getAllInvoices', 'db:getInvoicesByStatus', 'db:getOverdueInvoices', 'db:updateInvoice', 'db:deleteInvoice',
       'db:getStats', 'db:getClientStats', 'db:getRecentActivities',
       'db:getSetting', 'db:setSetting', 'db:getAllSettings',
       'db:backup', 'db:restore', 'db:importData',
-      'db:generateId', 'db:generateInvoiceNumber', 'db:getDefaultDueDate'
+      'db:generateId', 'db:generateInvoiceNumber', 'db:getDefaultDueDate',
+      // Auth operations
+      'auth:validateLicense', 'auth:checkSubscription', 'auth:refreshSubscription'
     ];
 
     if (allowedChannels.includes(channel)) {
@@ -105,6 +108,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
       console.warn('[PRELOAD] Blocked unauthorized IPC channel:', channel);
       return Promise.reject(new Error(`Unauthorized IPC channel: ${channel}`));
     }
+  },
+
+  /**
+   * Open URL in system browser
+   * @param {string} url - URL to open
+   * @returns {Promise<void>}
+   */
+  openExternal: (url) => {
+    return ipcRenderer.invoke('open-external', url);
   },
 
   // ==========================================

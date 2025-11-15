@@ -26,20 +26,33 @@ export async function handleStripeWebhook(req, res) {
         const session = event.data.object;
         const customerEmail = session.customer_email;
         const customerId = session.customer;
-        const subscriptionId = session.subscription;
+        const mode = session.mode;
 
-        // Get subscription to determine tier
-        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-        const priceId = subscription.items.data[0].price.id;
+        // Handle lifetime (one-time payment) vs subscription
+        if (mode === 'payment') {
+          // Lifetime purchase - one-time payment
+          const billingPeriod = session.metadata?.billing_period || 'lifetime';
+          const tier = session.metadata?.tier || 'pro';
 
-        // Map price ID to tier (you'll set these in Stripe)
-        let tier = 'pro';
-        if (priceId === process.env.STRIPE_BUSINESS_PRICE_ID) {
-          tier = 'business';
+          console.log(`[WEBHOOK] Lifetime purchase detected for ${customerEmail}`);
+
+          // Activate license with lifetime access (null expiration or very long date)
+          await activateLicense(customerEmail, customerId, `lifetime_${customerId}`, tier, billingPeriod);
+          console.log(`Lifetime license activated for ${customerEmail}`);
+        } else {
+          // Subscription purchase (monthly/annual)
+          const subscriptionId = session.subscription;
+
+          // Get subscription to determine tier
+          const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+          const priceId = subscription.items.data[0].price.id;
+
+          // Default to 'pro' tier for all subscriptions
+          const tier = 'pro';
+
+          await activateLicense(customerEmail, customerId, subscriptionId, tier);
+          console.log(`Subscription license activated for ${customerEmail}`);
         }
-
-        await activateLicense(customerEmail, customerId, subscriptionId, tier);
-        console.log(`License activated for ${customerEmail}`);
         break;
       }
 

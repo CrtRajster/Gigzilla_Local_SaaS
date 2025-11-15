@@ -13,7 +13,8 @@ class GigzillaApp {
       dashboard: new DashboardView(this.store),
       pipeline: new PipelineView(this.store),
       clients: new ClientsView(this.store),
-      money: new MoneyView(this.store)
+      money: new MoneyView(this.store),
+      upgrade: new UpgradeFlow()
     };
 
     // Make views globally accessible for event handlers
@@ -21,6 +22,7 @@ class GigzillaApp {
     window.pipelineView = this.views.pipeline;
     window.clientsView = this.views.clients;
     window.moneyView = this.views.money;
+    window.upgradeFlowView = this.views.upgrade;
 
     this.init();
   }

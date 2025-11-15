@@ -113,6 +113,103 @@ app.post('/api/license-info', async (req, res) => {
   }
 });
 
+// Create Stripe Checkout Session
+app.post('/api/create-checkout-session', async (req, res) => {
+  try {
+    const { email, billing_period } = req.body;
+
+    if (!email || !billing_period) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required parameters: email, billing_period'
+      });
+    }
+
+    // Validate billing period (including hidden 'lifetime' for AppSumo)
+    if (!['monthly', 'annual', 'lifetime'].includes(billing_period)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid billing_period. Must be "monthly", "annual", or "lifetime"'
+      });
+    }
+
+    // Get the correct Stripe Price ID based on billing period
+    const priceIdMap = {
+      'monthly': process.env.STRIPE_MONTHLY_PRICE_ID,
+      'annual': process.env.STRIPE_ANNUAL_PRICE_ID,
+      'lifetime': process.env.STRIPE_LIFETIME_PRICE_ID  // Hidden tier for AppSumo
+    };
+
+    const priceId = priceIdMap[billing_period];
+
+    if (!priceId) {
+      return res.status(500).json({
+        success: false,
+        error: 'Price ID not configured for this billing period'
+      });
+    }
+
+    // Import Stripe
+    const Stripe = (await import('stripe')).default;
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+
+    // Determine checkout mode (subscription for recurring, payment for one-time)
+    const mode = billing_period === 'lifetime' ? 'payment' : 'subscription';
+
+    // Create Stripe Checkout Session
+    const sessionConfig = {
+      customer_email: email,
+      mode: mode,
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price: priceId,
+          quantity: 1
+        }
+      ],
+      success_url: `${process.env.APP_URL || 'http://localhost:3000'}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${process.env.APP_URL || 'http://localhost:3000'}/checkout/cancel`,
+      metadata: {
+        email: email,
+        tier: 'pro',
+        billing_period: billing_period
+      },
+      allow_promotion_codes: true,
+      billing_address_collection: 'auto'
+    };
+
+    // Add subscription_data only for subscription mode
+    if (mode === 'subscription') {
+      sessionConfig.subscription_data = {
+        metadata: {
+          email: email,
+          tier: 'pro',
+          billing_period: billing_period
+        }
+      };
+    }
+
+    const session = await stripe.checkout.sessions.create(sessionConfig);
+
+    console.log(`[CHECKOUT] Created ${mode} session for ${email} - ${billing_period}`);
+    console.log(`[CHECKOUT] Session URL: ${session.url}`);
+
+    res.json({
+      success: true,
+      checkout_url: session.url,
+      session_id: session.id
+    });
+
+  } catch (error) {
+    console.error('Create checkout session error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to create checkout session',
+      details: error.message
+    });
+  }
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log(`✓ Gigzilla License Server running on port ${PORT}`);
