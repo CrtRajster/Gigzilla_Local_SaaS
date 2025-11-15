@@ -792,6 +792,113 @@ ipcMain.handle('refresh-license', async () => {
   return licenseState;
 });
 
+/**
+ * Open external URL in system browser
+ */
+ipcMain.handle('open-external', async (event, url) => {
+  try {
+    console.log('[MAIN] Opening external URL:', url);
+    await shell.openExternal(url);
+    return { success: true };
+  } catch (error) {
+    console.error('[MAIN] Error opening external URL:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+/**
+ * Validate license via auth manager
+ */
+ipcMain.handle('auth:validateLicense', async (event, email) => {
+  try {
+    console.log('[MAIN] Validating license for:', email);
+    const result = await authManager.validateLicense(email);
+
+    // Update license state
+    if (result.valid) {
+      licenseState.isValid = true;
+      licenseState.license = result.license;
+      licenseState.needsActivation = false;
+      licenseState.offline = false;
+
+      // Notify renderer process
+      if (mainWindow) {
+        mainWindow.webContents.send('license-updated', licenseState);
+      }
+    }
+
+    return result;
+  } catch (error) {
+    console.error('[MAIN] License validation error:', error);
+    return {
+      valid: false,
+      error: error.message
+    };
+  }
+});
+
+/**
+ * Check subscription status via auth manager
+ */
+ipcMain.handle('auth:checkSubscription', async (event, email) => {
+  try {
+    console.log('[MAIN] Checking subscription for:', email);
+    const result = await authManager.checkSubscription(email);
+
+    // Update license state
+    if (result.isValid) {
+      licenseState.isValid = true;
+      licenseState.license = result.license;
+      licenseState.needsActivation = false;
+      licenseState.offline = result.offline || false;
+
+      // Notify renderer process
+      if (mainWindow) {
+        mainWindow.webContents.send('license-updated', licenseState);
+      }
+    }
+
+    return result;
+  } catch (error) {
+    console.error('[MAIN] Subscription check error:', error);
+    return {
+      isValid: false,
+      error: error.message
+    };
+  }
+});
+
+/**
+ * Refresh subscription via auth manager
+ */
+ipcMain.handle('auth:refreshSubscription', async (event) => {
+  try {
+    console.log('[MAIN] Refreshing subscription...');
+    const result = await authManager.refreshSubscription();
+
+    // Update license state
+    if (result.success) {
+      licenseState.isValid = true;
+      licenseState.license = result.license;
+      licenseState.needsActivation = false;
+      licenseState.offline = false;
+
+      // Notify renderer process
+      if (mainWindow) {
+        mainWindow.webContents.send('license-updated', licenseState);
+      }
+    }
+
+    return result;
+  } catch (error) {
+    console.error('[MAIN] Subscription refresh error:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+});
+
 // ============================================
 // ERROR HANDLING
 // ============================================
