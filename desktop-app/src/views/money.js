@@ -9,9 +9,9 @@ class MoneyView {
     this.filterStatus = 'all';
   }
 
-  render() {
-    const stats = this.store.getStats();
-    const invoices = this.getFilteredInvoices();
+  async render() {
+    const stats = await this.store.getStats();
+    const invoices = await this.getFilteredInvoices();
 
     return `
       <div class="view-header">
@@ -60,7 +60,7 @@ class MoneyView {
         <!-- Invoice List -->
         ${invoices.length > 0 ? `
           <div class="invoice-list">
-            ${invoices.map(invoice => this.renderInvoiceRow(invoice)).join('')}
+            ${(await Promise.all(invoices.map(invoice => this.renderInvoiceRow(invoice)))).join('')}
           </div>
         ` : `
           <div style="text-align: center; padding: 48px; color: var(--gray-400); background: white; border-radius: var(--radius-lg);">
@@ -73,8 +73,8 @@ class MoneyView {
     `;
   }
 
-  renderInvoiceRow(invoice) {
-    const client = this.store.getClient(invoice.clientId);
+  async renderInvoiceRow(invoice) {
+    const client = await this.store.getClient(invoice.clientId);
     const statusInfo = this.getStatusInfo(invoice);
 
     return `
@@ -131,11 +131,11 @@ class MoneyView {
     };
   }
 
-  getFilteredInvoices() {
-    const allInvoices = this.store.getAllInvoices();
+  async getFilteredInvoices() {
+    const allInvoices = await this.store.getAllInvoices();
 
     if (this.filterStatus === 'all') return allInvoices;
-    if (this.filterStatus === 'overdue') return this.store.getOverdueInvoices();
+    if (this.filterStatus === 'overdue') return await this.store.getOverdueInvoices();
 
     return allInvoices.filter(inv => inv.status === this.filterStatus);
   }
@@ -145,10 +145,10 @@ class MoneyView {
     gigzillaApp.refreshCurrentView();
   }
 
-  showInvoiceDetails(invoiceId) {
-    const invoice = this.store.getInvoice(invoiceId);
-    const client = this.store.getClient(invoice.clientId);
-    const project = invoice.projectId ? this.store.getProject(invoice.projectId) : null;
+  async showInvoiceDetails(invoiceId) {
+    const invoice = await this.store.getInvoice(invoiceId);
+    const client = await this.store.getClient(invoice.clientId);
+    const project = invoice.projectId ? await this.store.getProject(invoice.projectId) : null;
 
     gigzillaApp.showModal('Invoice Details', `
       <div style="margin-bottom: 24px;">
@@ -231,11 +231,11 @@ class MoneyView {
       {
         label: 'Delete',
         class: 'btn-secondary',
-        onclick: () => {
+        onclick: async () => {
           if (confirm('Are you sure you want to delete this invoice?')) {
-            this.store.deleteInvoice(invoiceId);
+            await this.store.deleteInvoice(invoiceId);
             gigzillaApp.closeModal();
-            gigzillaApp.refreshCurrentView();
+            await gigzillaApp.refreshCurrentView();
           }
         }
       },
@@ -247,23 +247,23 @@ class MoneyView {
     ]);
   }
 
-  sendInvoice(invoiceId) {
-    this.store.updateInvoice(invoiceId, { status: 'sent' });
+  async sendInvoice(invoiceId) {
+    await this.store.updateInvoice(invoiceId, { status: 'sent' });
     alert('Invoice marked as sent!');
     gigzillaApp.closeModal();
-    gigzillaApp.refreshCurrentView();
+    await gigzillaApp.refreshCurrentView();
   }
 
-  markAsPaid(invoiceId) {
-    this.store.updateInvoice(invoiceId, { status: 'paid' });
+  async markAsPaid(invoiceId) {
+    await this.store.updateInvoice(invoiceId, { status: 'paid' });
     alert('Invoice marked as paid!');
     gigzillaApp.closeModal();
-    gigzillaApp.refreshCurrentView();
+    await gigzillaApp.refreshCurrentView();
   }
 
-  sendReminder(invoiceId) {
-    const invoice = this.store.getInvoice(invoiceId);
-    const client = this.store.getClient(invoice.clientId);
+  async sendReminder(invoiceId) {
+    const invoice = await this.store.getInvoice(invoiceId);
+    const client = await this.store.getClient(invoice.clientId);
     alert(`Payment reminder would be sent to ${client?.name} for invoice ${invoice.invoiceNumber}`);
   }
 

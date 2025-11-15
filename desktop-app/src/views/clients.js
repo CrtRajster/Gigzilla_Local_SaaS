@@ -9,10 +9,21 @@ class ClientsView {
     this.searchQuery = '';
   }
 
-  render() {
+  async render() {
     const clients = this.searchQuery
-      ? this.store.searchClients(this.searchQuery)
-      : this.store.getAllClients();
+      ? await this.store.searchClients(this.searchQuery)
+      : await this.store.getAllClients();
+
+    // Render all client cards (async operation)
+    const clientCards = clients.length > 0
+      ? (await Promise.all(clients.map(client => this.renderClientCard(client)))).join('')
+      : `
+          <div style="text-align: center; padding: 48px; color: var(--gray-400);">
+            <div style="font-size: 48px; margin-bottom: 16px;">👥</div>
+            <div style="font-size: 16px; margin-bottom: 8px;">No clients yet</div>
+            <div style="font-size: 14px;">Add your first client to get started</div>
+          </div>
+        `;
 
     return `
       <div class="view-header">
@@ -31,20 +42,14 @@ class ClientsView {
       </div>
 
       <div class="clients-container">
-        ${clients.length > 0 ? clients.map(client => this.renderClientCard(client)).join('') : `
-          <div style="text-align: center; padding: 48px; color: var(--gray-400);">
-            <div style="font-size: 48px; margin-bottom: 16px;">👥</div>
-            <div style="font-size: 16px; margin-bottom: 8px;">No clients yet</div>
-            <div style="font-size: 14px;">Add your first client to get started</div>
-          </div>
-        `}
+        ${clientCards}
       </div>
     `;
   }
 
-  renderClientCard(client) {
-    const stats = this.store.getClientStats(client.id);
-    const projects = this.store.getProjectsByClient(client.id);
+  async renderClientCard(client) {
+    const stats = await this.store.getClientStats(client.id);
+    const projects = await this.store.getProjectsByClient(client.id);
     const recentProjects = projects.slice(0, 3);
 
     return `
@@ -127,8 +132,8 @@ class ClientsView {
     gigzillaApp.refreshCurrentView();
   }
 
-  editClient(clientId) {
-    const client = this.store.getClient(clientId);
+  async editClient(clientId) {
+    const client = await this.store.getClient(clientId);
     if (!client) return;
 
     gigzillaApp.showModal('Edit Client', `
@@ -152,14 +157,14 @@ class ClientsView {
       {
         label: 'Save',
         class: 'btn-primary',
-        onclick: () => {
+        onclick: async () => {
           const name = document.getElementById('edit-client-name').value.trim();
           if (!name) {
             alert('Please enter a company name');
             return;
           }
 
-          this.store.updateClient(clientId, {
+          await this.store.updateClient(clientId, {
             name: name,
             email: document.getElementById('edit-client-email').value.trim(),
             phone: document.getElementById('edit-client-phone').value.trim(),
@@ -167,7 +172,7 @@ class ClientsView {
           });
 
           gigzillaApp.closeModal();
-          gigzillaApp.refreshCurrentView();
+          await gigzillaApp.refreshCurrentView();
         }
       },
       {
@@ -178,9 +183,9 @@ class ClientsView {
     ]);
   }
 
-  deleteClient(clientId) {
-    const client = this.store.getClient(clientId);
-    const projects = this.store.getProjectsByClient(clientId);
+  async deleteClient(clientId) {
+    const client = await this.store.getClient(clientId);
+    const projects = await this.store.getProjectsByClient(clientId);
 
     if (projects.length > 0) {
       if (!confirm(`This client has ${projects.length} project(s). Deleting will remove the client but keep the projects. Continue?`)) {
@@ -192,13 +197,13 @@ class ClientsView {
       }
     }
 
-    this.store.deleteClient(clientId);
-    gigzillaApp.refreshCurrentView();
+    await this.store.deleteClient(clientId);
+    await gigzillaApp.refreshCurrentView();
   }
 
-  viewAllProjects(clientId) {
-    const client = this.store.getClient(clientId);
-    const projects = this.store.getProjectsByClient(clientId);
+  async viewAllProjects(clientId) {
+    const client = await this.store.getClient(clientId);
+    const projects = await this.store.getProjectsByClient(clientId);
 
     gigzillaApp.showModal(`Projects for ${client.name}`, `
       <div style="max-height: 400px; overflow-y: auto;">
