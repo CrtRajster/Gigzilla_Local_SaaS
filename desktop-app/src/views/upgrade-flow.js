@@ -168,9 +168,6 @@ class UpgradeFlow {
       // Show success message
       this.showCheckoutOpened(billingPeriod);
 
-      // Start polling for checkout success
-      this.startCheckoutPolling(email);
-
     } catch (error) {
       console.error('[UPGRADE] Error:', error);
       this.isProcessing = false;
@@ -220,90 +217,43 @@ class UpgradeFlow {
   }
 
   /**
-   * Start polling for checkout success
-   */
-  startCheckoutPolling(email) {
-    let attempts = 0;
-    const maxAttempts = 60; // 5 minutes (5s intervals)
-
-    const pollInterval = setInterval(async () => {
-      attempts++;
-
-      try {
-        // Check license status
-        const result = await window.electronAPI.invoke('auth:validateLicense', email);
-
-        if (result.valid && result.license.status === 'active') {
-          clearInterval(pollInterval);
-          this.handleCheckoutSuccess(result.license);
-        }
-
-        if (attempts >= maxAttempts) {
-          clearInterval(pollInterval);
-          console.log('[UPGRADE] Polling timeout after 5 minutes');
-        }
-
-      } catch (error) {
-        console.error('[UPGRADE] Polling error:', error);
-      }
-    }, 5000); // Check every 5 seconds
-  }
-
-  /**
    * Manually check checkout success
    */
   async checkCheckoutSuccess() {
-    try {
-      const email = await window.electronAPI.storeGet('user_email');
+    // Clear pending checkout data
+    await window.electronAPI.storeDelete('pending_checkout_session');
+    await window.electronAPI.storeDelete('pending_billing_period');
 
-      if (!email) {
-        throw new Error('No email found');
+    this.isProcessing = false;
+
+    // Show confirmation message
+    window.gigzillaApp?.showModal('Checkout Complete', `
+      <div style="text-align: center; padding: 24px 0;">
+        <div style="font-size: 64px; margin-bottom: 24px;">✨</div>
+        <div style="font-size: 24px; font-weight: 700; margin-bottom: 8px;">
+          Thank you for your purchase!
+        </div>
+        <div style="font-size: 14px; color: var(--gray-600); margin-bottom: 24px;">
+          Your payment has been processed
+        </div>
+      </div>
+    `, [
+      {
+        label: 'Continue',
+        class: 'btn-primary',
+        onclick: () => {
+          window.gigzillaApp?.closeModal();
+          window.gigzillaApp?.navigateTo('dashboard');
+        }
       }
-
-      // Validate license
-      const result = await window.electronAPI.invoke('auth:validateLicense', email);
-
-      if (result.valid && result.license.status === 'active') {
-        this.handleCheckoutSuccess(result.license);
-      } else {
-        window.gigzillaApp?.showModal('Payment Processing', `
-          <div style="text-align: center; padding: 24px 0;">
-            <div style="font-size: 48px; margin-bottom: 16px;">⏳</div>
-            <div style="font-size: 16px; margin-bottom: 8px;">
-              Payment is still processing
-            </div>
-            <div style="font-size: 14px; color: var(--gray-600);">
-              Please wait a few moments and try again
-            </div>
-          </div>
-        `, [
-          {
-            label: 'Check Again',
-            class: 'btn-primary',
-            onclick: () => {
-              window.gigzillaApp?.closeModal();
-              this.checkCheckoutSuccess();
-            }
-          },
-          {
-            label: 'Close',
-            class: 'btn-ghost',
-            onclick: () => window.gigzillaApp?.closeModal()
-          }
-        ]);
-      }
-
-    } catch (error) {
-      console.error('[UPGRADE] Check success error:', error);
-      this.showError(error.message);
-    }
+    ]);
   }
 
   /**
    * Handle successful checkout
    */
-  async handleCheckoutSuccess(license) {
-    console.log('[UPGRADE] Checkout successful!', license);
+  async handleCheckoutSuccess() {
+    console.log('[UPGRADE] Checkout successful!');
 
     // Clear pending checkout data
     await window.electronAPI.storeDelete('pending_checkout_session');
@@ -326,7 +276,7 @@ class UpgradeFlow {
             ✓ Unlimited projects and clients<br>
             ✓ Invoice management and tracking<br>
             ✓ Revenue analytics<br>
-            ✓ Multi-device support (${license.max_devices || 3} devices)
+            ✓ Multi-device support
           </div>
         </div>
       </div>
