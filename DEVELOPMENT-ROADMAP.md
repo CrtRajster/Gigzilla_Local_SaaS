@@ -1,95 +1,148 @@
-# GIGZILLA LOCAL SAAS - COMPLETE DEVELOPMENT ROADMAP
+# GIGZILLA - ZERO-STORAGE DEVELOPMENT ROADMAP
 
-**Architecture:** Serverless (Cloudflare Workers + Neon PostgreSQL)
+**Architecture:** Zero-Storage (Stripe as Database + Cloudflare Workers)
+
+**Philosophy:**
+- ✅ Store NOTHING on servers (Stripe is your only database)
+- ✅ Zero GDPR liability
+- ✅ €0 infrastructure costs
+- ✅ 95%+ profit margins
+- ✅ True passive income
 
 ---
 
-## PHASE 1: PROJECT SETUP & INFRASTRUCTURE
+## PHASE 1: STRIPE SETUP (FOUNDATION)
 
-### ✅ Task 1.1: Cloudflare Workers Development Environment *(COMPLETED)*
-
-You've already completed this task. Your serverless backend is set up with Cloudflare Workers.
-
----
-
-### ✅ Task 1.2: Stripe Account & Products Setup *(COMPLETED)*
+### ✅ Task 1.1: Stripe Account & Products Setup *(COMPLETED)*
 
 You've already configured Stripe with:
-- Pro tier: €9/month
-- Annual: €90/year
-- Lifetime (hidden): €360 one-time
+- Monthly: €9/month - Unlimited devices
+- Annual: €90/year - Unlimited devices (save 17%)
+- Trial: 14 days free, no credit card
+
+**Note:** Lifetime tier (€360) is exclusively for AppSumo, not public website.
 
 ---
 
-## PHASE 2: BACKEND DEVELOPMENT (CLOUDFLARE WORKERS)
+### ✅ Task 1.2: Verify Stripe Products Configuration *(COMPLETED)*
 
-### ✅ Task 2.1: Core License Validation API *(COMPLETED)*
-
-Your Cloudflare Worker already has the license validation endpoints working.
+Your Stripe products are set up correctly with trial periods.
 
 ---
 
-### ☐ Task 2.2: Add Rate Limiting & Security
+## PHASE 2: CLOUDFLARE WORKER (STATELESS API)
+
+### ✅ Task 2.1: Cloudflare Workers Development Environment *(COMPLETED)*
+
+Your serverless backend is set up with Cloudflare Workers.
+
+---
+
+### ☐ Task 2.2: Review and Test Existing Worker Code
+
+**IMPORTANT:** Complete production-ready Cloudflare Worker code already exists in `claude_code_version/ZERO-STORAGE-ARCHITECTURE.md` (lines 267-589).
 
 **Copy-Paste Prompt:**
 ```
-Add security features and rate limiting to the Gigzilla Cloudflare Worker:
+Review the complete Cloudflare Worker implementation from ZERO-STORAGE-ARCHITECTURE.md:
 
-1. Implement rate limiting using Cloudflare's built-in features:
-   - Per-IP rate limits on all endpoints
-   - Stricter limits on trial creation and validation
-   - Use Cloudflare Rate Limiting rules
+The worker includes:
+1. Email-based subscription verification (no license keys!)
+2. JWT token generation (7-day offline grace period)
+3. Referral system (zero-storage via Stripe metadata)
+4. Stripe webhook handling
+5. All helper functions (JWT signing, base64 encoding)
 
-2. Add security headers:
-   - HTTPS enforcement
-   - CORS configuration for desktop app
-   - Security headers (CSP, X-Frame-Options, etc.)
+Tasks:
+1. Copy worker code from ZERO-STORAGE-ARCHITECTURE.md lines 267-589
+2. Save to: cloudflare-worker/src/index.js
+3. Review all endpoints:
+   - POST /verify (email → check Stripe → return JWT)
+   - POST /referral-stats (get user's referral count)
+   - POST /webhook/stripe (process Stripe events)
+4. Test locally using Miniflare or wrangler dev
+5. Verify JWT token generation works
+6. Test referral logic with mock Stripe data
 
-3. Implement abuse prevention:
-   - Log validation attempts
-   - Detect suspicious patterns
-   - Block IPs with excessive failures
-
-4. Add input validation:
-   - Email format validation
-   - UUID format validation for license keys
-   - Machine ID format validation
-
-Files to work with:
-- C:\Users\Crt\CLAUDE CODE DOMAIN\Gigzilla_Local_SaaS\cloudflare-worker\src\index.js
+Files:
+- Source: claude_code_version/ZERO-STORAGE-ARCHITECTURE.md (lines 267-589)
+- Destination: cloudflare-worker/src/index.js
 ```
 
 ---
 
-### ☐ Task 2.3: Implement Offline Grace Period with JWT
+### ☐ Task 2.3: Configure Cloudflare Worker Environment Variables
 
 **Copy-Paste Prompt:**
 ```
-Implement the 7-day offline grace period using JWT tokens for Gigzilla:
+Set up environment variables for the Gigzilla Cloudflare Worker:
 
-1. Create JWT token generation in Cloudflare Worker:
-   - Generate signed JWT tokens on successful validation
-   - Include: email, license_key, tier, expiration (7 days)
-   - Sign with JWT_SECRET (use Cloudflare Worker environment variable)
+1. Generate JWT secret:
+   openssl rand -base64 32
 
-2. Modify /api/validate endpoint:
-   - Return JWT token in response
-   - Desktop app stores this token
+2. Add secrets to Cloudflare Worker:
+   wrangler secret put STRIPE_SECRET_KEY
+   # Paste: sk_test_... (or sk_live_... for production)
 
-3. Create offline validation logic:
-   - Verify JWT signature
-   - Check expiration
-   - Allow app to work offline for 7 days
+   wrangler secret put JWT_SECRET
+   # Paste the generated secret from step 1
 
-4. Add JWT secret to Cloudflare Worker environment variables
+   wrangler secret put STRIPE_WEBHOOK_SECRET
+   # Paste: whsec_... (get this after creating webhook in Stripe)
 
-Files to work with:
-- C:\Users\Crt\CLAUDE CODE DOMAIN\Gigzilla_Local_SaaS\cloudflare-worker\src\index.js
+3. Update wrangler.toml if needed:
+   - Set worker name
+   - Set compatibility date
+   - Configure routes if using custom domain
+
+4. Test deployment:
+   wrangler deploy
+
+Files:
+- cloudflare-worker/wrangler.toml
 ```
 
 ---
 
-## PHASE 3: DESKTOP APP DEVELOPMENT
+### ☐ Task 2.4: Configure Stripe Webhook
+
+**Copy-Paste Prompt:**
+```
+Set up Stripe webhooks to communicate with your Cloudflare Worker:
+
+1. Deploy Worker first (get URL):
+   wrangler deploy
+   # Note the URL: https://gigzilla-api.YOUR-USERNAME.workers.dev
+
+2. In Stripe Dashboard → Developers → Webhooks:
+   - Click "Add endpoint"
+   - URL: https://gigzilla-api.YOUR-USERNAME.workers.dev/webhook/stripe
+
+3. Select events to listen for:
+   ✅ customer.subscription.created
+   ✅ customer.subscription.updated
+   ✅ customer.subscription.deleted
+   ✅ invoice.payment_succeeded
+   ✅ customer.subscription.trial_will_end
+
+4. Copy webhook signing secret (whsec_...)
+
+5. Add to Cloudflare Worker:
+   wrangler secret put STRIPE_WEBHOOK_SECRET
+   # Paste the whsec_... secret
+
+6. Test webhook:
+   stripe trigger customer.subscription.created
+
+   # Check Worker logs:
+   wrangler tail
+
+Reference: claude_code_version/DEPLOYMENT-GUIDE-ZERO-STORAGE.md
+```
+
+---
+
+## PHASE 3: DESKTOP APP (LOCAL-FIRST)
 
 ### ✅ Task 3.1: Build Authentication UI *(COMPLETED)*
 
@@ -97,73 +150,350 @@ You've built the modern liquid glass activation screen.
 
 ---
 
-### ✅ Task 3.2: Build Authentication Manager *(COMPLETED)*
+### ☐ Task 3.2: Implement Email-Based Authentication (NO LICENSE KEYS!)
 
-Your auth manager is working with API communication and license validation.
-
----
-
-### ✅ Task 3.3: Create Machine ID Generation System *(COMPLETED)*
-
-Hardware-based machine ID generation is implemented.
-
----
-
-### ✅ Task 3.4: Integrate Auth into Electron App *(COMPLETED)*
-
-Authentication is integrated into the Electron main process.
-
----
-
-### ✅ Task 3.5: Build Core Freelancer Management UI *(COMPLETED)*
-
-You have Dashboard, Pipeline, Clients, and Money views.
-
----
-
-### ✅ Task 3.6: Implement Local Data Storage (SQLite) *(COMPLETED)*
-
-SQLite local storage with better-sqlite3 is implemented.
-
----
-
-## PHASE 4: STRIPE INTEGRATION & FEATURES
-
-### ✅ Task 4.1: Create Stripe Checkout Flow *(COMPLETED)*
-
-Stripe checkout integration is complete with monthly/annual tiers.
-
----
-
-### ☐ Task 4.2: Implement Referral System
+**CRITICAL:** Remove all license key + machine ID logic. Replace with email-based auth.
 
 **Copy-Paste Prompt:**
 ```
-Implement the viral referral system for Gigzilla:
+Rewrite authentication to use email-based system with UNLIMITED devices:
 
-1. Cloudflare Worker: Add referral tracking:
-   - Generate unique referral codes for each user
-   - Store referral code in Stripe customer metadata
-   - Track referrals (referrer -> referred)
-   - Apply €9 credit to both parties on successful conversion
+REMOVE COMPLETELY:
+- License key generation
+- Machine ID tracking
+- Device limits (no tracking!)
+- Hardware fingerprinting
 
-2. Desktop app: Add referral UI:
-   - "Invite Friends" section in settings
-   - Display user's unique referral code/link
-   - Show referral stats (how many referred, credits earned)
-   - Copy referral link button
+IMPLEMENT:
+1. Email-only authentication flow:
+   - User enters email
+   - App calls Worker: POST /verify { email }
+   - Worker checks Stripe: "Does this email have active subscription?"
+   - Worker returns JWT token (valid 7 days)
+   - App stores JWT locally
 
-3. Checkout integration:
-   - Accept referral code in checkout URL
-   - Apply credit automatically
-   - Send email notifications to both parties
+2. Update activation screen (activation-screen.html):
+   - Remove: "Enter license key" field
+   - Add: "Enter your email" field
+   - Button: "Start Free Trial" (opens Stripe Checkout)
+   - Button: "I Already Subscribed" (verifies email)
 
-4. Create referral tracking endpoint:
-   - GET /api/referral-stats (email -> stats)
+3. Offline grace period:
+   - JWT token valid for 7 days
+   - After 7 days offline: require online check
+   - Store token + expiry in localStorage
+
+4. Unlimited devices:
+   - Same email can activate on ANY device
+   - No device counting
+   - No device limits
+   - JWT tokens are session-based, not device-based
 
 Files to modify:
-- Cloudflare Worker: add referral endpoints
-- Desktop app: create referral-manager.js
+- desktop-app/src/auth-manager.js
+- desktop-app/src/activation-screen.html
+- Remove: desktop-app/src/machine-id.js (no longer needed!)
+
+Reference: claude_code_version/ZERO-STORAGE-ARCHITECTURE.md (lines 72-112)
+```
+
+---
+
+### ☐ Task 3.3: Integrate Stripe Checkout for Trial Sign-ups
+
+**Copy-Paste Prompt:**
+```
+Integrate Stripe Checkout for trial sign-ups from desktop app:
+
+1. When user clicks "Start Free Trial":
+   - Open browser with Stripe Checkout URL
+   - Pre-fill user's email
+   - Set trial_period_days: 14
+   - Redirect back to: gigzilla://success
+
+2. Stripe Checkout configuration:
+   const session = await stripe.checkout.sessions.create({
+     customer_email: userEmail,
+     mode: 'subscription',
+     line_items: [{ price: 'price_monthly', quantity: 1 }],
+     subscription_data: {
+       trial_period_days: 14
+     },
+     success_url: 'gigzilla://success',
+     cancel_url: 'gigzilla://cancel'
+   });
+
+3. Handle deep link callback:
+   - App receives: gigzilla://success
+   - Automatically calls /verify endpoint
+   - Gets JWT token
+   - Unlocks app
+
+4. Show proper messaging:
+   - "Starting your free trial..."
+   - "Verifying subscription..."
+   - "Welcome! Your app is now active."
+
+Files to create/modify:
+- desktop-app/src/stripe-checkout.js
+- desktop-app/main.js (register deep link handler)
+```
+
+---
+
+### ☐ Task 3.4: Build Core Freelancer Management UI
+
+**Copy-Paste Prompt:**
+```
+Build the core local-first UI for Gigzilla:
+
+1. Dashboard View:
+   - Overview of active projects
+   - Total revenue this month
+   - Pending invoices
+   - Recent activity
+
+2. Pipeline View (Kanban):
+   - To Start
+   - Working On
+   - Done
+   - Paid
+   - Drag & drop between columns
+
+3. Clients View:
+   - List all clients
+   - Client details (contact, projects, revenue)
+   - Add/edit/delete clients
+   - Sort by revenue, recent activity
+
+4. Money View:
+   - All invoices (sent, pending, overdue, paid)
+   - Payment tracking
+   - Revenue charts
+   - Filter by client, date, status
+
+5. Settings View:
+   - Profile settings (local)
+   - Notification preferences
+   - Subscription management (link to Stripe Customer Portal)
+   - Referral code display
+
+All data stored locally using SQLite or JSON files.
+
+Files to create:
+- desktop-app/src/views/dashboard.html
+- desktop-app/src/views/pipeline.html
+- desktop-app/src/views/clients.html
+- desktop-app/src/views/money.html
+- desktop-app/src/views/settings.html
+```
+
+---
+
+### ☐ Task 3.5: Implement Local Data Storage (SQLite)
+
+**Copy-Paste Prompt:**
+```
+Set up local-first data storage using SQLite:
+
+Database schema:
+
+CREATE TABLE clients (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  email TEXT,
+  phone TEXT,
+  company TEXT,
+  notes TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE projects (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  client_id INTEGER,
+  name TEXT NOT NULL,
+  description TEXT,
+  amount REAL,
+  currency TEXT DEFAULT 'EUR',
+  status TEXT DEFAULT 'to_start', -- to_start, working, done, paid
+  deadline DATE,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (client_id) REFERENCES clients(id)
+);
+
+CREATE TABLE invoices (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id INTEGER,
+  invoice_number TEXT UNIQUE,
+  amount REAL NOT NULL,
+  currency TEXT DEFAULT 'EUR',
+  status TEXT DEFAULT 'draft', -- draft, sent, paid, overdue
+  sent_date DATE,
+  due_date DATE,
+  paid_date DATE,
+  notes TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (project_id) REFERENCES projects(id)
+);
+
+CREATE TABLE profile (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  name TEXT,
+  business_name TEXT,
+  email TEXT,
+  phone TEXT,
+  timezone TEXT,
+  country TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+Important:
+- NO OAuth tokens in SQLite (security risk!)
+- NO payment credentials
+- Only local business data (clients, projects, invoices)
+
+Use: better-sqlite3 package
+
+Files to create:
+- desktop-app/src/database/schema.sql
+- desktop-app/src/database/db-manager.js
+```
+
+---
+
+## PHASE 4: KILLER FEATURES (COMPETITIVE ADVANTAGE)
+
+**Note:** These are your PRIMARY differentiators. Not "advanced" features!
+
+### ☐ Task 4.1: Implement Auto-Pause Fair Billing (KILLER FEATURE #1)
+
+**Copy-Paste Prompt:**
+```
+Implement Auto-Pause Fair Billing - your #1 competitive advantage:
+
+WHY THIS MATTERS:
+- Unique in the market
+- +300% customer LTV
+- Builds massive trust
+- Reduces churn to near zero
+
+HOW IT WORKS:
+1. Desktop app detects when user has zero active projects
+2. Shows prompt: "No active projects. Pause subscription to avoid charges?"
+3. User clicks "Pause" → App calls Worker
+4. Worker calls Stripe API: subscription.pause_collection
+5. Subscription paused, no charges until resumed
+6. When user creates new project → Auto-resume subscription
+
+IMPLEMENTATION:
+
+1. Cloudflare Worker endpoints:
+   POST /api/pause-subscription
+   {
+     "email": "user@example.com"
+   }
+   → Finds customer in Stripe
+   → Pauses their subscription
+   → Returns success
+
+   POST /api/resume-subscription
+   {
+     "email": "user@example.com"
+   }
+   → Finds customer in Stripe
+   → Resumes their subscription
+   → Returns success
+
+2. Desktop app logic:
+   - Check every time project is marked "Paid" or archived
+   - If active_projects.count() === 0:
+     - Show modal: "Pause subscription?"
+     - Explain: "You won't be charged while paused"
+     - Button: "Pause" or "Keep Active"
+
+3. Auto-resume:
+   - When user creates new project
+   - Automatically call /api/resume-subscription
+   - Show notification: "Subscription resumed"
+
+4. UI indicators:
+   - Settings page shows: "Status: Paused ⏸️"
+   - Show savings: "Saved €27 while paused"
+   - Easy manual resume button
+
+Files to create:
+- cloudflare-worker/src/endpoints/pause-subscription.js
+- desktop-app/src/features/auto-pause.js
+- desktop-app/src/components/pause-modal.html
+
+Reference: User mentioned KILLER-FEATURE-AUTO-PAUSE.md (create this from scratch)
+```
+
+---
+
+### ☐ Task 4.2: Implement Zero-Storage Referral System
+
+**Copy-Paste Prompt:**
+```
+Implement the zero-storage referral system:
+
+HOW IT WORKS:
+1. User gets referral code (generated from email):
+   - Code = base64(email).substring(0,10)
+   - Example: "DXNLCJBKEG"
+   - No storage needed (code derived from email)
+
+2. Desktop app displays:
+   - "Your referral code: DXNLCJBKEG"
+   - "Share link: gigzilla.site?ref=DXNLCJBKEG"
+   - Copy button
+
+3. Landing page tracks referrals:
+   - JavaScript reads ?ref= from URL
+   - Stores in localStorage
+   - When user subscribes, passes to Stripe metadata
+
+4. Stripe webhook processes referral:
+   - Decodes referral code → gets referrer email
+   - Finds referrer in Stripe customers
+   - Creates invoice credit: -€9 for both parties
+   - Updates referrer's subscription metadata: total_referrals++
+
+5. Desktop app shows stats:
+   - "You've referred: 3 friends"
+   - "Earned: €27 in credits"
+   - Fetched from Stripe metadata (no database!)
+
+IMPLEMENTATION:
+
+1. Desktop app referral UI:
+   function generateReferralCode(email) {
+     return btoa(email).substring(0, 10).toUpperCase();
+   }
+
+2. Landing page JavaScript:
+   const urlParams = new URLSearchParams(window.location.search);
+   const ref = urlParams.get('ref');
+   if (ref) localStorage.setItem('gigzilla_referral', ref);
+
+3. Stripe Checkout integration:
+   subscription_data: {
+     metadata: {
+       referral_code: localStorage.getItem('gigzilla_referral') || '',
+       referred_by_email: referralCode ? atob(referralCode) : ''
+     }
+   }
+
+4. Worker webhook handler:
+   - Already implemented in ZERO-STORAGE-ARCHITECTURE.md lines 456-525
+   - Processes referral when subscription becomes active
+   - Grants €9 credit to both parties
+
+Files to create:
+- desktop-app/src/features/referral-manager.js
+- landing-page/js/referral-tracker.js
+
+Reference: claude_code_version/ZERO-STORAGE-ARCHITECTURE.md (lines 116-259)
 ```
 
 ---
@@ -172,1055 +502,1053 @@ Files to modify:
 
 **Copy-Paste Prompt:**
 ```
-Add subscription management features to Gigzilla desktop app:
+Add subscription management to desktop app:
 
-1. Create "Account Settings" screen:
-   - Current plan display (tier, price, billing period)
+1. Settings → Subscription section:
+   - Current plan: "Monthly - €9/month"
+   - Status: "Active" or "Trialing" or "Paused"
    - Next billing date
-   - Payment method (via Stripe Customer Portal)
-   - Usage stats (devices used / max devices)
+   - Button: "Manage Subscription" → Opens Stripe Customer Portal
 
-2. Add "Manage Subscription" button:
-   - Opens Stripe Customer Portal in browser
-   - Allows user to:
-     - Update payment method
-     - Change plan
-     - Cancel subscription
-     - View billing history
+2. Stripe Customer Portal:
+   - Create endpoint in Worker:
+     POST /api/create-portal-session
+     {
+       "email": "user@example.com"
+     }
 
-3. Create Cloudflare Worker endpoint:
-   - POST /api/create-portal-session
-   - Creates Stripe Customer Portal session
    - Returns portal URL
+   - Desktop app opens in browser
+   - User can:
+     • Update payment method
+     • Change plan (monthly ↔ annual)
+     • View billing history
+     • Cancel subscription
 
-4. Handle subscription changes:
-   - Detect when subscription is cancelled
-   - Show appropriate messaging
-   - Offer to pause instead (Auto-Pause feature)
+3. Show unlimited devices info:
+   - "Devices: Unlimited ✨"
+   - "Use on as many devices as you want"
+   - No device tracking UI needed!
 
-Files to work with:
-- Cloudflare Worker: add portal session endpoint
-- Desktop app: create account-settings.html and account-manager.js
-```
-
----
-
-## PHASE 5: ADVANCED FEATURES
-
-### ☐ Task 5.1: Implement Auto-Pause Fair Billing
-
-**Copy-Paste Prompt:**
-```
-Implement the Auto-Pause Fair Billing feature (Killer Feature #1):
-
-Reference document:
-- C:\Users\Crt\CLAUDE CODE DOMAIN\Gigzilla_Local_SaaS\KILLER-FEATURE-AUTO-PAUSE.md
-
-1. Desktop app logic:
-   - Detect when user has zero active projects
-   - Prompt user: "No active projects. Pause subscription to avoid charges?"
-   - Send pause request to Cloudflare Worker
-   - Detect when new project is created
-   - Send resume request to worker
-
-2. Cloudflare Worker implementation:
-   - POST /api/pause-subscription (email -> pause Stripe subscription)
-   - POST /api/resume-subscription (email -> resume Stripe subscription)
-   - Use Stripe subscription.pause_collection
-   - Track pause/resume events
-
-3. UI improvements:
-   - Show "Paused" badge on subscription
-   - Explain savings clearly
-   - Make resuming seamless
-
-4. Add pause/resume history
+4. Auto-pause info:
+   - "Auto-Pause: Enabled ✅"
+   - "We'll suggest pausing when you have no active projects"
+   - Toggle to disable if desired
 
 Files to create:
-- Desktop app: auto-pause-manager.js
-- Cloudflare Worker: Add endpoints
+- desktop-app/src/views/subscription-settings.html
+- cloudflare-worker/src/endpoints/create-portal-session.js
 ```
 
 ---
 
-### ☐ Task 5.2: Implement Unified Client Messaging
+### ☐ Task 4.4: Build Invoice Generation System
 
 **Copy-Paste Prompt:**
 ```
-Implement the Unified Client Messaging feature (Killer Feature #2):
+Build professional invoice generation:
 
-Reference document:
-- C:\Users\Crt\CLAUDE CODE DOMAIN\Gigzilla_Local_SaaS\production-version\docs\UNIFIED-CLIENT-MESSAGING.md
-
-This is a complex feature. Break it into sub-tasks:
-
-1. Create unified inbox UI:
-   - Single message list showing all platforms
-   - Message cards with: client, platform icon, preview, timestamp
-   - Filter by client, platform, unread
-   - Search functionality
-
-2. Integrate messaging platforms (start with most important):
-   - Email (IMAP/SMTP)
-   - Upwork (API or scraping)
-   - Fiverr (API or scraping)
-   - WhatsApp Business API
-   - Instagram Direct (unofficial API)
-   - LinkedIn Messages
-
-3. Create message sync system:
-   - Background polling for new messages
-   - Desktop notifications
-   - Auto-link messages to clients/projects
-
-4. Build reply system:
-   - Reply in Gigzilla sends to original platform
-   - Track reply status
-   - Handle attachments
-
-This is a major feature - start with Email + one other platform as MVP.
-
-Files to create:
-- Desktop app: src/messaging/inbox-ui.html
-- Desktop app: src/messaging/message-sync.js
-- Desktop app: src/messaging/integrations/ (folder for each platform)
-```
-
----
-
-### ☐ Task 5.3: Build Invoice Generation System
-
-**Copy-Paste Prompt:**
-```
-Build the invoice generation and management system for Gigzilla:
-
-1. Create invoice data model:
-   - Invoice number (auto-generated)
-   - Client information
-   - Project/service details
-   - Line items (description, quantity, rate, amount)
-   - Subtotal, tax, total
-   - Due date
-   - Payment terms
-   - Status (draft, sent, paid, overdue)
-
-2. Build invoice creation UI:
-   - Form to create new invoice
+1. Invoice creation UI:
    - Auto-populate from project data
-   - Add line items dynamically
-   - Calculate totals automatically
-   - Preview before saving
+   - Client info (from local database)
+   - Line items (description, quantity, rate, amount)
+   - Subtotal, tax (optional), total
+   - Due date, payment terms
+   - Notes section
 
-3. Generate professional PDF invoices:
-   - Use a library like PDFKit or jsPDF
-   - Professional template
-   - Include logo, branding
-   - Payment instructions
+2. Invoice templates:
+   - Professional PDF generation
+   - Include your logo (from profile)
+   - Your business details (from profile)
+   - Client details
+   - Payment instructions (PayPal, bank transfer)
 
-4. Add invoice tracking:
-   - Mark as sent
-   - Mark as paid
-   - Send payment reminders (manual)
-   - View payment history
+3. Payment options on invoice:
+   - PayPal button (if connected)
+   - Stripe payment link (if connected)
+   - Bank transfer details
+   - All pulled from profile settings
+
+4. Invoice tracking:
+   - Mark as: Draft, Sent, Paid, Overdue
+   - Auto-detect overdue (due_date < today && status != 'paid')
+   - Send reminders (manual or automated)
 
 5. Export options:
    - PDF export
-   - Email invoice directly to client
+   - Email directly to client
+   - Print
+
+Use: PDFKit or jsPDF for PDF generation
 
 Files to create:
-- Desktop app: src/invoices/invoice-generator.js
-- Desktop app: src/invoices/invoice-template.js
-- Desktop app: src/invoices/invoice-ui.html
+- desktop-app/src/features/invoice-generator.js
+- desktop-app/src/templates/invoice-template.js
+- desktop-app/src/views/create-invoice.html
 ```
 
 ---
 
-### ☐ Task 5.4: Implement Automation System
+## PHASE 5: AUTOMATION & PRODUCTIVITY
+
+### ☐ Task 5.1: Implement Payment Detection & Auto-Matching
 
 **Copy-Paste Prompt:**
 ```
-Implement the automation system for Gigzilla:
+Build smart payment detection:
 
-Reference document:
-- C:\Users\Crt\CLAUDE CODE DOMAIN\Gigzilla_Local_SaaS\AUTOMATION-SYSTEM.md
+1. PayPal Integration (OAuth):
+   - Connect PayPal account
+   - Poll for recent transactions
+   - Match transactions to invoices by amount
+   - Auto-mark invoices as paid
 
-1. Create automation rules engine:
-   - Trigger conditions (project status change, date reached, etc.)
-   - Actions (send email, create invoice, send reminder, etc.)
-   - User-defined automation rules
+2. Stripe Integration (OAuth):
+   - Connect Stripe account
+   - Webhook for payment_intent.succeeded
+   - Match to invoices
+   - Auto-mark as paid
 
-2. Pre-built automations:
-   - Auto-generate invoice when project completed
-   - Send payment reminder 3 days before due date
-   - Send payment reminder on due date
-   - Send overdue notice 3 days after due date
-   - Auto-archive completed projects after 30 days
+3. Manual payment entry:
+   - User enters: "Received €1,500 from Acme Corp"
+   - App suggests matching invoice
+   - One-click confirmation
 
-3. Automation UI:
-   - View all active automations
-   - Enable/disable automations
-   - Create custom automations
-   - View automation history/logs
-
-4. Background task scheduler:
-   - Check automation conditions periodically
-   - Execute actions
-   - Log results
+4. Notifications on payment:
+   - Desktop notification: "💰 Payment received!"
+   - Details: Amount, client, invoice number
+   - Quick actions: View invoice, Thank client
 
 Files to create:
-- Desktop app: src/automation/automation-engine.js
-- Desktop app: src/automation/automation-rules.js
-- Desktop app: src/automation/automation-ui.html
+- desktop-app/src/integrations/paypal-oauth.js
+- desktop-app/src/integrations/stripe-oauth.js
+- desktop-app/src/features/payment-matcher.js
 ```
 
 ---
 
-### ☐ Task 5.5: Add Analytics & Reports
+### ☐ Task 5.2: Build Automation Rules Engine
 
 **Copy-Paste Prompt:**
 ```
-Add analytics and reporting features to Gigzilla:
+Create automation system for common workflows:
 
-1. Revenue analytics:
+PRE-BUILT AUTOMATIONS:
+
+1. Auto-invoice on completion:
+   - When project marked "Done"
+   - Generate invoice automatically
+   - Send to client
+   - Mark project as "Awaiting Payment"
+
+2. Payment reminders:
+   - 3 days before due date: Gentle reminder
+   - On due date: Polite reminder
+   - 3 days after due date: Overdue notice
+   - 7 days overdue: Final reminder
+
+3. Thank you messages:
+   - When payment received
+   - Auto-send thank you email
+   - Customizable template
+
+4. Project archiving:
+   - When invoice paid for 30+ days
+   - Auto-archive project
+   - Keeps workspace clean
+
+IMPLEMENTATION:
+
+1. Automation rules UI:
+   Settings → Automation
+   - List of available automations
+   - Toggle on/off for each
+   - Configure timing/templates
+
+2. Background scheduler:
+   - Check rules every hour
+   - Execute actions when conditions met
+   - Log all automation activity
+
+Files to create:
+- desktop-app/src/automation/rules-engine.js
+- desktop-app/src/automation/scheduler.js
+- desktop-app/src/views/automation-settings.html
+```
+
+---
+
+### ☐ Task 5.3: Add Analytics & Reports
+
+**Copy-Paste Prompt:**
+```
+Build analytics dashboard (all local calculations):
+
+1. Revenue Analytics:
    - Total revenue (all time, this year, this month)
-   - Revenue by client
-   - Revenue by project
+   - Revenue by client (who pays best)
    - Revenue trends (chart over time)
    - Projected income (based on active projects)
 
-2. Client analytics:
-   - Total clients
-   - Active vs inactive clients
+2. Client Analytics:
+   - Total clients, active vs inactive
    - Client lifetime value
-   - Top clients by revenue
+   - Average project value per client
+   - Payment speed (fast payer vs slow payer)
 
-3. Project analytics:
-   - Total projects
-   - Projects by status (active, completed, archived)
-
-4. Invoice analytics:
-   - Total invoiced
-   - Paid vs unpaid
+3. Invoice Analytics:
+   - Total invoiced vs paid
    - Average payment time
-   - Overdue invoices
+   - Overdue amount
+   - Collections rate
 
-5. Create reports:
-   - Monthly income report
-   - Client report
+4. Export reports:
+   - Monthly income report (PDF)
+   - Client summary report
    - Tax report (quarterly, annual)
-   - Export to CSV/PDF
+   - CSV export for accounting
+
+All calculated locally from SQLite data. No external analytics service needed.
 
 Files to create:
-- Desktop app: src/analytics/analytics-engine.js
-- Desktop app: src/analytics/charts.js
-- Desktop app: src/analytics/reports-ui.html
+- desktop-app/src/analytics/revenue-calculator.js
+- desktop-app/src/analytics/charts.js
+- desktop-app/src/views/analytics.html
 ```
 
 ---
 
-## PHASE 6: TESTING & QUALITY ASSURANCE
+## PHASE 6: LANDING PAGE & MARKETING
 
-### ☐ Task 6.1: Write Cloudflare Worker Tests
+### ☐ Task 6.1: Create Landing Page with Referral Tracking
 
 **Copy-Paste Prompt:**
 ```
-Write comprehensive tests for the Gigzilla Cloudflare Worker:
+Build landing page for gigzilla.site:
 
-1. Install testing framework:
-   - Miniflare (local Cloudflare Worker testing)
-   - Vitest or Jest
+1. Hero Section:
+   - Headline: "Manage your freelance business, not your subscriptions"
+   - Subheadline: "Auto-Pause Fair Billing™ - Only pay when you're working"
+   - CTA: "Start Free Trial" (14 days)
+   - Download buttons: Windows, macOS, Linux
 
-2. Write tests for license validation:
-   - createTrialLicense() - success, duplicate email
-   - validateLicense() - valid, invalid, expired, device limit
-   - activateLicense() - success, failure
-   - deactivateLicense() - success, failure
+2. Features Section:
+   - Highlight Auto-Pause Fair Billing (killer feature #1)
+   - Show visual pipeline/Kanban
+   - Payment tracking
+   - Invoice generation
+   - Local-first privacy
 
-3. Write tests for API endpoints:
-   - POST /api/start-trial
-   - POST /api/validate
-   - POST /api/license-info
-   - GET /health
+3. Pricing Table:
+   Monthly: €9/month - Unlimited devices
+   Annual: €90/year - Save 17%
+   Trial: 14 days free
 
-4. Write tests for Stripe webhook handler:
-   - Valid signature verification
-   - Invalid signature rejection
-   - Each webhook event type
+   (NO lifetime tier on website - AppSumo exclusive!)
 
-5. Aim for 80%+ code coverage
+4. Referral tracking:
+   - JavaScript to read ?ref= from URL
+   - Store in localStorage
+   - Show banner: "You've been referred! Get 1 month free"
+   - Pass to Stripe Checkout metadata
+
+5. Stripe Checkout integration:
+   - Create /subscribe endpoint (on Worker or simple backend)
+   - Pre-fill email from form
+   - Include referral metadata
+   - Redirect to gigzilla://success
+
+6. SEO Optimization:
+   - Meta tags for freelance management
+   - Schema markup
+   - Fast loading (Cloudflare Pages)
+
+Deploy to: Cloudflare Pages (FREE)
+
+Reference: claude_code_version/DEPLOYMENT-GUIDE-ZERO-STORAGE.md (lines 209-320)
+```
+
+---
+
+### ☐ Task 6.2: Prepare AppSumo Integration
+
+**Copy-Paste Prompt:**
+```
+Prepare for AppSumo lifetime deal launch:
+
+SETUP:
+
+1. AppSumo webhook handler in Worker:
+   POST /webhook/appsumo
+   {
+     "email": "customer@example.com",
+     "plan_id": "gigzilla_lifetime",
+     "uuid": "license-key-here"
+   }
+
+   → Create customer in Stripe
+   → Create "lifetime" subscription (never expires)
+   → Send email with activation instructions
+
+2. Email template for AppSumo customers:
+   "Thanks for purchasing Gigzilla on AppSumo!
+
+   Download: gigzilla.site/download
+   Activate with your email: {email}
+
+   Your lifetime access is ready!"
+
+3. Stripe lifetime subscription setup:
+   - Create internal price: "price_lifetime_internal"
+   - Set to never expire
+   - Metadata: { plan: 'lifetime', source: 'appsumo' }
+
+LISTING PREPARATION:
+
+1. Use copy from: claude_code_version/APPSUMO-STRATEGY.md
+   - Complete listing copy ready (lines 49-263)
+   - Features, FAQ, pricing all written
+
+2. Screenshots needed:
+   - Dashboard view
+   - Pipeline/Kanban
+   - Invoice creation
+   - Auto-pause prompt
+   - Settings page
+
+3. Demo video (60-90 seconds):
+   - Show app opening
+   - Create project
+   - Mark as done
+   - Auto-invoice
+   - Track payment
+   - End with "Available on AppSumo lifetime or €9/month"
 
 Files to create:
-- C:\Users\Crt\CLAUDE CODE DOMAIN\Gigzilla_Local_SaaS\cloudflare-worker\tests\
+- cloudflare-worker/src/endpoints/appsumo-webhook.js
+- email-templates/appsumo-welcome.html
+
+Reference: claude_code_version/APPSUMO-STRATEGY.md
 ```
 
 ---
 
-### ☐ Task 6.2: Write Desktop App Tests
+## PHASE 7: TESTING & QUALITY
+
+### ☐ Task 7.1: Write Cloudflare Worker Tests
 
 **Copy-Paste Prompt:**
 ```
-Write tests for the Gigzilla desktop app:
+Write comprehensive tests for Cloudflare Worker:
 
-1. Install Electron testing tools:
-   - Spectron (Electron testing framework)
-   - Jest or Mocha
+1. Install testing tools:
+   npm install -D vitest miniflare
 
-2. Write tests for authentication:
-   - Email validation
-   - Trial creation flow
-   - License validation flow
-   - Offline mode
-   - Machine ID generation
+2. Test /verify endpoint:
+   - Email with active subscription → Returns JWT
+   - Email with trial subscription → Returns JWT
+   - Email with no subscription → Returns error
+   - Invalid email format → Returns error
 
-3. Write tests for core features:
-   - Create/edit/delete clients
-   - Create/edit/delete projects
-   - Generate invoices
-   - Data persistence (SQLite)
+3. Test referral system:
+   - Subscription with referral metadata → Processes credits
+   - Subscription without referral → No errors
+   - Invalid referral code → Graceful handling
 
-4. Write UI tests:
-   - Navigation between screens
-   - Form validation
-   - Error handling
+4. Test webhook processing:
+   - Valid Stripe signature → Processes event
+   - Invalid signature → Rejects
+   - Each event type processes correctly
 
-5. Test offline functionality
+5. Test JWT generation:
+   - Token contains correct payload
+   - Token signature validates
+   - Token expires after 7 days
+
+Aim for 80%+ code coverage.
 
 Files to create:
-- C:\Users\Crt\CLAUDE CODE DOMAIN\Gigzilla_Local_SaaS\desktop-app\tests\auth.test.js
-- C:\Users\Crt\CLAUDE CODE DOMAIN\Gigzilla_Local_SaaS\desktop-app\tests\core-features.test.js
-- C:\Users\Crt\CLAUDE CODE DOMAIN\Gigzilla_Local_SaaS\desktop-app\tests\ui.test.js
+- cloudflare-worker/tests/verify.test.js
+- cloudflare-worker/tests/referrals.test.js
+- cloudflare-worker/tests/webhooks.test.js
 ```
 
 ---
 
-### ☐ Task 6.3: Perform Integration Testing
+### ☐ Task 7.2: End-to-End Testing
 
 **Copy-Paste Prompt:**
 ```
-Perform end-to-end integration testing for Gigzilla:
+Test complete user flows:
 
-1. Test complete user flows:
-   - New user signup -> trial creation -> app usage -> subscription purchase -> continued use
-   - Trial expiration -> payment -> reactivation
-   - Subscription cancellation -> reactivation
-   - Device limit testing (register multiple devices)
-   - Offline mode -> come back online
+1. New user trial flow:
+   - Download app
+   - Enter email
+   - Click "Start Free Trial"
+   - Complete Stripe Checkout (test mode)
+   - Verify subscription in app
+   - App unlocks ✓
 
-2. Test Stripe integration:
-   - Complete checkout flow (test mode)
-   - Webhook delivery
-   - Subscription updates
-   - Cancellations
-   - Refunds
+2. Referral flow:
+   - User A shares referral link
+   - User B clicks link
+   - User B subscribes
+   - Both users receive €9 credit in Stripe
+   - Credits appear on next invoice
 
-3. Test edge cases:
-   - Network failures
-   - Cloudflare Worker errors
-   - Stripe API errors
-   - Concurrent license validation requests
-   - Invalid data inputs
+3. Offline mode:
+   - Use app online
+   - Disconnect internet
+   - App continues working (JWT cached)
+   - Reconnect after 7 days
+   - App requests fresh verification
 
-4. Document all test cases and results
+4. Auto-pause flow:
+   - Mark all projects as paid
+   - App prompts to pause subscription
+   - Pause subscription
+   - Verify Stripe shows paused
+   - Create new project
+   - Auto-resume subscription
 
-Create test documentation:
-- C:\Users\Crt\CLAUDE CODE DOMAIN\Gigzilla_Local_SaaS\tests\INTEGRATION-TEST-PLAN.md
+5. Device testing:
+   - Activate on Device A
+   - Activate on Device B (same email)
+   - Both work simultaneously (unlimited devices!)
+
+Document all test cases and results.
 ```
 
 ---
 
-### ☐ Task 6.4: Security Audit
+### ☐ Task 7.3: Security Review
 
 **Copy-Paste Prompt:**
 ```
-Perform a security audit of the Gigzilla application:
+Perform security audit:
 
-1. Cloudflare Worker security review:
-   - SQL injection vulnerabilities
-   - JWT token security
-   - API rate limiting effectiveness
-   - Stripe webhook signature verification
-   - Environment variable exposure
-   - CORS configuration
-   - HTTPS enforcement
+CLOUDFLARE WORKER:
+1. ✅ Stripe webhook signature verification
+2. ✅ JWT token signing with secret
+3. ✅ CORS configuration
+4. ✅ Rate limiting (use Cloudflare's built-in)
+5. ✅ Input validation (email format, etc.)
+6. ✅ Environment variables secured
 
-2. Desktop app security review:
-   - Secure storage of license keys
-   - Machine ID privacy
-   - Local database encryption
-   - API key storage
-   - XSS vulnerabilities in UI
+DESKTOP APP:
+1. ✅ JWT tokens stored securely (encrypted at rest)
+2. ✅ NO payment credentials stored locally
+3. ✅ OAuth tokens encrypted (if stored)
+4. ✅ SQL injection prevention (parameterized queries)
+5. ✅ XSS prevention in UI
+6. ✅ Secure deep link handling (gigzilla://)
 
-3. Run security scanning tools:
-   - npm audit (fix vulnerabilities)
-   - Retire.js (outdated libraries)
+Run:
+- npm audit (fix vulnerabilities)
+- Security scanning tools
+- Code review checklist
 
-4. Create security checklist and remediation plan
-
-Files to create:
-- C:\Users\Crt\CLAUDE CODE DOMAIN\Gigzilla_Local_SaaS\SECURITY-AUDIT.md
-- C:\Users\Crt\CLAUDE CODE DOMAIN\Gigzilla_Local_SaaS\SECURITY-CHECKLIST.md
+Document findings and fixes.
 ```
 
 ---
 
-### ☐ Task 6.5: Performance Testing & Optimization
+## PHASE 8: DEPLOYMENT
+
+### ☐ Task 8.1: Deploy Cloudflare Worker to Production
 
 **Copy-Paste Prompt:**
 ```
-Test and optimize performance for Gigzilla:
+Deploy Worker to production:
 
-1. Cloudflare Worker performance:
-   - Load testing (simulate 1000+ concurrent users)
-   - API response time measurement
-   - Identify bottlenecks
-   - Optimize database queries
+1. Switch Stripe to Live mode:
+   - Get live API keys (sk_live_...)
+   - Get live webhook secret (whsec_...)
 
-2. Desktop app performance:
-   - App startup time
-   - UI responsiveness
-   - Large dataset handling (1000+ projects)
-   - Memory usage
-   - SQLite query optimization
+2. Update Worker secrets:
+   wrangler secret put STRIPE_SECRET_KEY
+   # Paste: sk_live_...
 
-3. Use performance testing tools:
-   - Artillery (Cloudflare Worker load testing)
-   - Electron DevTools (desktop app profiling)
+   wrangler secret put STRIPE_WEBHOOK_SECRET
+   # Paste: whsec_...
 
-4. Create performance benchmarks and optimization report
+3. Deploy:
+   wrangler deploy
 
-Files to create:
-- C:\Users\Crt\CLAUDE CODE DOMAIN\Gigzilla_Local_SaaS\PERFORMANCE-REPORT.md
+4. Update Stripe webhook to production URL:
+   - Stripe Dashboard → Webhooks
+   - Add endpoint (live mode)
+   - Same events as test mode
+
+5. Test production:
+   - Call /verify with test email
+   - Verify webhook receives events
+   - Check logs: wrangler tail
+
+Reference: claude_code_version/DEPLOYMENT-GUIDE-ZERO-STORAGE.md
 ```
 
 ---
 
-## PHASE 7: DEPLOYMENT
-
-### ☐ Task 7.1: Deploy Cloudflare Worker to Production
+### ☐ Task 8.2: Build and Sign Desktop App Installers
 
 **Copy-Paste Prompt:**
 ```
-Deploy the Gigzilla Cloudflare Worker to production:
+Build production installers:
 
-1. Prepare production environment:
-   - Ensure Neon PostgreSQL database is production-ready
-   - Set all environment variables in Cloudflare dashboard
-   - Use production Stripe keys
-
-2. Deploy Cloudflare Worker:
-   - Run: wrangler deploy
-   - Verify deployment
-   - Test health endpoint
-   - Test API endpoints
-
-3. Set up Stripe production webhook:
-   - Add webhook endpoint in Stripe dashboard (Cloudflare Worker URL)
-   - Use production webhook secret
-   - Test webhook delivery
-
-4. Set up monitoring:
-   - Cloudflare Analytics
-   - Error tracking (Sentry)
-   - Uptime monitoring (UptimeRobot)
-
-5. Configure custom domain (if desired)
-   - Add custom domain in Cloudflare Workers
-   - Update DNS records
-
-Working directory: C:\Users\Crt\CLAUDE CODE DOMAIN\Gigzilla_Local_SaaS\cloudflare-worker
-```
-
----
-
-### ☐ Task 7.2: Build Desktop App Installers
-
-**Copy-Paste Prompt:**
-```
-Build production installers for the Gigzilla desktop app:
-
-1. Update app configuration:
-   - Set production API URL (Cloudflare Worker URL)
-   - Update version number
+1. Update configuration:
+   - Set API_URL to production Worker URL
+   - Set version number (e.g., 1.0.0)
    - Add app icon
    - Configure auto-updater
 
 2. Build Windows installer:
-   - Use electron-builder
-   - NSIS installer
+   - electron-builder with NSIS
    - Code signing (if certificate available)
-   - Test installation on clean Windows machine
+   - Test on clean Windows machine
 
 3. Build macOS installer:
    - DMG installer
-   - Code signing with Apple Developer certificate
+   - Code signing with Apple Developer cert
    - Notarization for macOS Catalina+
    - Test on clean macOS machine
 
 4. Build Linux installer:
    - AppImage or DEB package
-   - Test on Ubuntu/Debian
+   - Test on Ubuntu
 
-5. Create checksums (SHA-256) for all installers
+5. Create checksums (SHA-256) for security
 
-Working directory: C:\Users\Crt\CLAUDE CODE DOMAIN\Gigzilla_Local_SaaS\desktop-app
+Working directory: desktop-app/
 ```
 
 ---
 
-### ☐ Task 7.3: Set Up Auto-Update System
+### ☐ Task 8.3: Deploy Landing Page
 
 **Copy-Paste Prompt:**
 ```
-Implement auto-update functionality for Gigzilla desktop app:
+Deploy landing page to Cloudflare Pages:
 
-1. Set up update server:
-   - Use electron-updater with GitHub Releases
-   - Or use Cloudflare R2 for hosting updates
-   - Upload builds to update server
+1. Push to GitHub:
+   git init
+   git add .
+   git commit -m "Initial landing page"
+   git push origin main
 
-2. Configure auto-updater in Electron app:
-   - Check for updates on startup
-   - Download updates in background
-   - Prompt user to install
-   - Install and restart
+2. Cloudflare Pages:
+   - Dashboard → Pages → Create project
+   - Connect to GitHub repo
+   - Build settings: (none needed for static site)
+   - Deploy
 
-3. Create update notification UI:
-   - "Update available" dialog
-   - Release notes display
-   - "Install and restart" button
-   - "Remind me later" option
+3. Add custom domain:
+   - gigzilla.site
+   - Update DNS records
+   - Enable HTTPS (automatic)
 
-4. Test update flow:
-   - Deploy version 1.0.0
-   - Deploy version 1.0.1
-   - Verify auto-update works
+4. Test:
+   - Visit gigzilla.site
+   - Test referral tracking (?ref=TEST)
+   - Test Stripe Checkout flow
+   - Verify mobile responsive
 
-Files to modify:
-- Desktop app main.js (add auto-updater code)
-- Create update-manager.js
+Your site is live! ✨
 ```
 
 ---
 
-### ☐ Task 7.4: Create Landing Page & Marketing Site
+### ☐ Task 8.4: Set Up Monitoring
 
 **Copy-Paste Prompt:**
 ```
-Create a landing page and marketing website for Gigzilla:
+Set up minimal monitoring:
 
-1. Build landing page with:
-   - Hero section (headline, subheadline, CTA)
-   - Features section (highlight 2 killer features)
-   - Pricing table
-   - Testimonials (placeholder for now)
-   - FAQ section
-   - Footer with links
+1. Cloudflare Analytics (built-in):
+   - Monitor Worker requests
+   - Track errors
+   - Response times
 
-2. Key messaging:
-   - "Manage your freelance business, not your subscriptions"
-   - Highlight Auto-Pause Fair Billing
-   - Highlight Unified Client Messaging
-   - Emphasize privacy (local-first)
+2. Stripe Dashboard:
+   - Monitor MRR (Monthly Recurring Revenue)
+   - Track new subscriptions
+   - Monitor churn rate
+   - View webhook logs
 
-3. Add download buttons:
-   - Windows, macOS, Linux
-   - Link to installers
+3. UptimeRobot (optional):
+   - Free tier
+   - Monitor Worker /health endpoint
+   - Email alerts on downtime
 
-4. SEO optimization:
-   - Meta tags
-   - Schema markup
-   - Sitemap
-   - robots.txt
+4. Error tracking (optional):
+   - Sentry for Worker errors
+   - Free tier sufficient
 
-5. Deploy landing page:
-   - Cloudflare Pages (perfect fit with your Worker)
-   - Custom domain (gigzilla.site or similar)
-
-Create new directory:
-- C:\Users\Crt\CLAUDE CODE DOMAIN\Gigzilla_Local_SaaS\landing-page\
+That's it! No complex monitoring needed.
+Keep it simple and focus on customers.
 ```
 
 ---
 
-### ☐ Task 7.5: Set Up Analytics & Monitoring
+## PHASE 9: LAUNCH & GROWTH
+
+### ☐ Task 9.1: Beta Testing Program
 
 **Copy-Paste Prompt:**
 ```
-Set up analytics and monitoring for Gigzilla:
+Launch closed beta before public release:
 
-1. Cloudflare Worker monitoring:
-   - Cloudflare Analytics (built-in)
-   - Error tracking: Sentry
-   - Uptime monitoring: UptimeRobot or Pingdom
-   - Cloudflare Logs (for debugging)
+1. Recruit 30-50 beta testers:
+   - Reddit: r/freelance
+   - Facebook groups
+   - Twitter freelance community
+   - Your network
 
-2. Product analytics (privacy-focused):
-   - Desktop app usage: PostHog or Mixpanel
-   - Track key events (trial created, subscription purchased, features used)
-   - Anonymized data only (respect privacy)
+2. Beta incentive:
+   - Free lifetime access OR
+   - 50% off first year
 
-3. Landing page analytics:
-   - Cloudflare Web Analytics (privacy-focused)
-   - Or Plausible (privacy-focused)
-   - Track conversions (downloads, trials, purchases)
-
-4. Create analytics dashboard:
-   - Key metrics: MRR, active users, churn rate, trial conversion
-   - Real-time alerts for errors or downtime
-
-5. Set up weekly/monthly reports
-
-Document setup:
-- C:\Users\Crt\CLAUDE CODE DOMAIN\Gigzilla_Local_SaaS\MONITORING-SETUP.md
-```
-
----
-
-## PHASE 8: LAUNCH & POST-LAUNCH
-
-### ☐ Task 8.1: Create Documentation & Help Center
-
-**Copy-Paste Prompt:**
-```
-Create comprehensive user documentation for Gigzilla:
-
-1. Getting Started Guide:
-   - Installation instructions (Windows, macOS, Linux)
-   - Account creation (trial)
-   - First project setup
-   - First invoice creation
-
-2. Feature Documentation:
-   - Managing clients
-   - Managing projects
-   - Creating invoices
-   - Using automation
-   - Understanding Auto-Pause Billing
-   - Using Unified Messaging
-   - Subscription management
-
-3. FAQ:
-   - Billing questions
-   - Device limits
-   - Offline usage
-   - Data privacy
-   - Troubleshooting common issues
-
-4. Video tutorials:
-   - Screen recordings for key features
-   - Upload to YouTube
-
-5. Deploy help center:
-   - Cloudflare Pages (static site)
-   - Or use GitBook, Notion
-   - Make searchable
-   - Link from desktop app
-
-Create directory:
-- C:\Users\Crt\CLAUDE CODE DOMAIN\Gigzilla_Local_SaaS\docs\user-guide\
-```
-
----
-
-### ☐ Task 8.2: Set Up Customer Support System
-
-**Copy-Paste Prompt:**
-```
-Set up customer support infrastructure for Gigzilla:
-
-1. Choose support platform:
-   - Help Scout, Intercom, or Crisp
-   - Or simple: Gmail with labels + canned responses
-
-2. Create support email:
-   - support@gigzilla.site
-   - Set up email forwarding
-   - Create email templates for common issues
-
-3. Add in-app support:
-   - "Get Help" button in desktop app
-   - Opens support email or ticket form
-   - Automatically includes system info (version, OS, license status)
-
-4. Create internal knowledge base:
-   - Common issues and solutions
-   - Troubleshooting guide
-   - Escalation procedures
-
-5. Set up SLA (service level agreement):
-   - Response time targets
-   - Resolution time targets
-
-Document setup:
-- C:\Users\Crt\CLAUDE CODE DOMAIN\Gigzilla_Local_SaaS\SUPPORT-SETUP.md
-```
-
----
-
-### ☐ Task 8.3: Launch Beta Program
-
-**Copy-Paste Prompt:**
-```
-Launch a beta testing program for Gigzilla before public release:
-
-1. Recruit beta testers:
-   - Target: 50-100 freelancers
-   - Where to find: Reddit (r/freelance), Facebook groups, Twitter, Product Hunt
-   - Offer incentive: Lifetime discount or free premium tier
-
-2. Create beta feedback system:
-   - Google Form or Typeform for feedback
-   - Discord or Slack community for beta testers
-   - Track feature requests and bug reports
-
-3. Prepare beta communication:
-   - Welcome email with instructions
+3. Feedback system:
+   - Google Form for bug reports
+   - Discord/Slack for discussions
    - Weekly check-ins
-   - Beta completion survey
 
-4. Define beta success criteria:
-   - Bug discovery and fixes
+4. Beta timeline:
+   - 4 weeks
+   - Fix critical bugs
+   - Collect testimonials
+   - Validate pricing
+
+5. Success criteria:
+   - 80%+ satisfaction
+   - 5+ five-star reviews
+   - No critical bugs
    - Feature validation
-   - User satisfaction score
-   - Trial-to-paid conversion rate
-
-5. Beta timeline:
-   - 4-6 weeks beta period
-   - Weekly updates
-   - Public launch after beta
-
-Create beta documentation:
-- C:\Users\Crt\CLAUDE CODE DOMAIN\Gigzilla_Local_SaaS\BETA-PROGRAM.md
 ```
 
 ---
 
-### ☐ Task 8.4: Prepare Launch Marketing Campaign
+### ☐ Task 9.2: Product Hunt Launch
 
 **Copy-Paste Prompt:**
 ```
-Prepare and execute the launch marketing campaign for Gigzilla:
+Prepare Product Hunt launch:
 
-1. Pre-launch (2 weeks before):
-   - Build email waitlist (landing page form)
-   - Create social media accounts (Twitter, LinkedIn, Instagram)
-   - Prepare launch content (blog posts, videos)
-   - Reach out to influencers/reviewers
-   - Prepare Product Hunt launch
+1. Product Hunt listing:
+   - Tagline: "Freelance management with Auto-Pause Fair Billing"
+   - Description: Highlight killer features
+   - Screenshots: Dashboard, pipeline, auto-pause
+   - Demo video: 60-90 seconds
 
-2. Launch day:
-   - Product Hunt launch (prepare detailed post)
-   - Post on Reddit (r/freelance, r/SideProject, r/entrepreneurship)
-   - Twitter announcement thread
-   - LinkedIn post
-   - Send email to waitlist
-   - Press release (optional)
+2. Launch strategy:
+   - Post at 12:01 AM PT (maximize visibility)
+   - Respond to ALL comments within 1 hour
+   - Have 10-15 friends upvote early
+   - Offer launch discount (optional)
 
-3. Post-launch (2 weeks after):
-   - Share user testimonials
-   - Case studies
-   - Feature highlights
-   - Referral program promotion
+3. Follow-up:
+   - Share on Twitter, LinkedIn
+   - Email beta testers
+   - Reddit posts (after 24 hours)
 
-4. Content marketing:
-   - Blog: "How to manage freelance business efficiently"
-   - YouTube: Product demos
+Goal: Top 5 product of the day
+```
+
+---
+
+### ☐ Task 9.3: AppSumo Launch
+
+**Copy-Paste Prompt:**
+```
+Launch on AppSumo:
+
+1. Submit to AppSumo:
+   - Email: partners@appsumo.com
+   - Use listing copy from: claude_code_version/APPSUMO-STRATEGY.md
+   - Provide screenshots + demo video
+   - Set lifetime price: €360
+
+2. Launch preparation:
+   - Test AppSumo webhook integration
+   - Prepare support email templates
+   - Set up monitoring for sudden traffic
+
+3. During launch:
+   - Respond to comments within 1 hour (critical!)
+   - Monitor sales dashboard
+   - Fix any activation issues immediately
+   - Collect reviews (aim for 4.5+ stars)
+
+4. Promote launch:
+   - Email existing users
+   - Social media announcements
+   - "As Seen on AppSumo" badge on website
+
+Expected: 200-500 lifetime sales + 1,000+ monthly signups from traffic
+
+Reference: claude_code_version/APPSUMO-STRATEGY.md
+```
+
+---
+
+### ☐ Task 9.4: Content Marketing & SEO
+
+**Copy-Paste Prompt:**
+```
+Build long-term organic traffic:
+
+1. Blog content (on landing page):
+   - "How to manage freelance finances"
+   - "Invoice templates for freelancers"
+   - "Best practices for payment tracking"
+   - "Freelance pricing guide"
+   - Target keywords: freelance management, invoice software
+
+2. Video content:
+   - YouTube tutorials
+   - Feature walkthroughs
+   - "Day in the life" of Gigzilla user
+
+3. Free directory listings:
+   - Capterra
+   - G2
+   - AlternativeTo
+   - ProductHunt (permanent listing)
+
+4. Guest posts:
+   - Freelance blogs
+   - Design communities
+   - Developer communities
+
+5. Social media:
    - Twitter: Tips for freelancers
    - LinkedIn: Professional insights
+   - Instagram: Visual content
 
-5. Paid advertising (optional):
-   - Facebook/Instagram ads targeting freelancers
-   - Google Ads (keywords: freelance management, invoice software)
-
-Create marketing plan:
-- C:\Users\Crt\CLAUDE CODE DOMAIN\Gigzilla_Local_SaaS\LAUNCH-MARKETING-PLAN.md
+Goal: Consistent organic traffic growth
 ```
 
 ---
 
-### ☐ Task 8.5: Implement Feedback Loop & Iteration
+## PHASE 10: OPTIONAL ADVANCED FEATURES
+
+### ☐ Task 10.1: Build Mobile Companion App
 
 **Copy-Paste Prompt:**
 ```
-Set up systems for continuous improvement of Gigzilla post-launch:
+Create mobile app for on-the-go access:
 
-1. User feedback collection:
-   - In-app feedback button
-   - NPS (Net Promoter Score) surveys
-   - Feature request form
-   - Monthly user surveys
-
-2. Analytics review:
-   - Weekly metrics review (MRR, active users, churn)
-   - Identify usage patterns
-   - Find feature adoption rates
-   - Detect drop-off points
-
-3. Prioritization framework:
-   - Score features by impact and effort
-   - Create product roadmap
-   - Quarterly planning
-
-4. Release cycle:
-   - Monthly feature releases
-   - Weekly bug fixes
-   - Hotfixes as needed
-
-5. Communicate updates:
-   - Changelog in app
-   - Email newsletter for major updates
-   - Blog posts for new features
-
-Create documents:
-- C:\Users\Crt\CLAUDE CODE DOMAIN\Gigzilla_Local_SaaS\PRODUCT-ROADMAP.md
-- C:\Users\Crt\CLAUDE CODE DOMAIN\Gigzilla_Local_SaaS\FEEDBACK-PROCESS.md
-```
-
----
-
-## PHASE 9: OPTIONAL ADVANCED FEATURES
-
-### ☐ Task 9.1: Build Mobile Companion App
-
-**Copy-Paste Prompt:**
-```
-Build a mobile companion app for Gigzilla (iOS/Android):
-
-1. Choose technology:
-   - React Native or Flutter (cross-platform)
-   - Native (Swift/Kotlin) for better performance
+1. Technology choice:
+   - React Native (cross-platform)
+   - Or Flutter
+   - Share API with desktop app
 
 2. Core features for mobile:
-   - View projects and clients (read-only)
+   - View projects (read-only initially)
    - Quick time tracking
-   - Respond to messages (Unified Messaging)
    - View invoices
-   - Dashboard with key metrics
-   - Sync with desktop app (via Cloudflare Worker API)
+   - Payment notifications
+   - Dashboard metrics
 
-3. Build MVP with limited features first:
-   - Authentication (same license)
-   - View-only mode for projects/clients
-   - Push notifications for messages/payments
+3. Sync strategy:
+   - Use same Cloudflare Worker API
+   - Optional: Implement cloud sync (encrypted)
+   - Or: Local-only (export/import data)
 
-4. Sync strategy:
-   - Use Cloudflare Worker API endpoints
-   - Optional encrypted cloud sync
-   - Real-time updates via Cloudflare Durable Objects
+4. Launch:
+   - iOS App Store
+   - Google Play Store
+   - Charge separately or include in subscription
 
-Create new directory:
-- C:\Users\Crt\CLAUDE CODE DOMAIN\Gigzilla_Local_SaaS\mobile-app\
+This is OPTIONAL - Focus on desktop first!
 ```
 
 ---
 
-### ☐ Task 9.2: Implement Team/Agency Features
+### ☐ Task 10.2: Build Integration Marketplace
 
 **Copy-Paste Prompt:**
 ```
-Add team/agency features to Gigzilla for scaling businesses:
+Add popular integrations:
 
-1. New tier: Agency (€49/month):
-   - 10 team members
-   - Unlimited devices
-   - Shared projects and clients
-   - Role-based permissions
-   - Team analytics
+HIGH PRIORITY:
+1. PayPal (payment detection)
+2. Stripe (payment detection)
+3. QuickBooks/Xero (accounting export)
+4. Google Calendar (deadline sync)
 
-2. Team management:
-   - Invite team members
-   - Assign roles (Admin, Member, Viewer)
-   - Permissions (who can create invoices, edit clients, etc.)
+MEDIUM PRIORITY:
+5. Upwork (import projects)
+6. Fiverr (import projects)
+7. Zapier (connect 1000+ apps)
 
-3. Collaboration features:
-   - Shared project ownership
-   - Comments/notes on projects
-   - Activity feed (who did what)
-   - Team chat (optional)
+LOW PRIORITY:
+8. Slack (notifications)
+9. Trello/Asana (project sync)
 
-4. Agency dashboard:
-   - Team performance metrics
-   - Revenue by team member
-   - Project assignments
-   - Capacity planning
-
-5. Cloudflare Worker changes:
-   - New database tables for teams
-   - Team-based license validation
-   - Multi-user sync via Durable Objects
-
-Reference for team features:
-- Research popular team/agency tools
-- Slack-like collaboration patterns
+Start with top 3, expand based on user requests.
 ```
 
 ---
 
-### ☐ Task 9.3: Build Integration Marketplace
+## 📊 DEVELOPMENT SUMMARY
 
-**Copy-Paste Prompt:**
-```
-Create an integration marketplace for Gigzilla:
+### CURRENT STATUS (Based on Your Info)
 
-Reference: C:\Users\Crt\CLAUDE CODE DOMAIN\Gigzilla_Local_SaaS\claude_cli_version\GIGZILLA-AUTOMATION-AND-INTEGRATIONS.md
+**✅ COMPLETED:**
+- Stripe account & products
+- Cloudflare Worker environment
+- Desktop app authentication UI
+- Core UI views (Dashboard, Pipeline, Clients, Money)
+- Local SQLite storage
 
-1. Core integrations:
-   - QuickBooks (accounting export)
-   - Xero (accounting export)
-   - Google Calendar (deadline sync)
-   - Zapier (connect to 1000+ apps)
-   - Calendly (meeting scheduling)
-   - Slack (notifications)
-   - Trello/Asana (project management)
+**🔄 IN PROGRESS:**
+- Transitioning to zero-storage architecture
+- Updating authentication (license keys → email-based)
 
-2. Build integration framework:
-   - Plugin architecture
-   - OAuth authentication for integrations
-   - Secure credential storage
-   - Integration marketplace UI
-
-3. Developer API:
-   - Allow third-party developers to build integrations
-   - API documentation
-   - SDK/libraries
-   - Developer portal
-
-4. Marketplace features:
-   - Browse integrations
-   - One-click install
-   - Configuration UI
-   - Enable/disable integrations
-
-Create new directory:
-- C:\Users\Crt\CLAUDE CODE DOMAIN\Gigzilla_Local_SaaS\integrations\
-- C:\Users\Crt\CLAUDE CODE DOMAIN\Gigzilla_Local_SaaS\api-docs\
-```
+**☐ TODO (Priority Order):**
+1. Review & deploy Worker code from docs
+2. Update authentication to email-based
+3. Implement Auto-Pause Fair Billing
+4. Implement zero-storage referrals
+5. Build landing page
+6. AppSumo integration
+7. Testing & launch
 
 ---
 
-### ☐ Task 9.4: Add AI-Powered Features
+## 🎯 SUCCESS METRICS
 
-**Copy-Paste Prompt:**
+### Phase 1-6 (3 months):
+- ✅ Production app deployed
+- ✅ 50 beta users
+- ✅ 5+ five-star reviews
+- ✅ Zero critical bugs
+
+### Phase 7-9 (Launch):
+- Product Hunt: Top 10 of the day
+- First 100 paying customers
+- €500+ MRR
+- AppSumo: 200+ lifetime sales
+
+### Year 1:
+- €3,000+ MRR
+- 300+ active subscribers
+- 95%+ profit margin
+- Zero infrastructure costs
+- True passive income ✨
+
+---
+
+## 💰 REVENUE PROJECTIONS
+
+### Month 1 (Launch):
 ```
-Add AI-powered features to Gigzilla for competitive advantage:
-
-1. Smart project suggestions:
-   - Analyze historical data
-   - Suggest project pricing based on scope
-   - Estimate project duration
-   - Recommend similar projects
-
-2. Invoice generation with AI:
-   - Auto-generate invoice descriptions from project notes
-   - Smart line item suggestions
-   - Payment terms recommendations
-
-3. Email/message drafting:
-   - AI-assisted responses to client messages
-   - Template suggestions based on context
-   - Tone adjustment (professional, friendly, urgent)
-
-4. Financial insights:
-   - Cash flow predictions
-   - Revenue forecasting
-   - Anomaly detection (unusual spending, late payments)
-   - Personalized business advice
-
-5. Implementation:
-   - Use Cloudflare Workers AI (built-in AI models)
-   - Or OpenAI API (GPT-4)
-   - Or local models for privacy (Ollama, LLaMA)
-   - Keep user data local (process on device)
-
-Create new directory:
-- C:\Users\Crt\CLAUDE CODE DOMAIN\Gigzilla_Local_SaaS\desktop-app\src\ai\
+50 monthly @ €9 = €450 MRR
+10 annual @ €90 = €900 one-time
+Total: €450 MRR
 ```
 
----
+### Month 3 (AppSumo):
+```
+AppSumo: 300 lifetime @ €360 = €32,400 cash (your 30% = €9,720)
+Traffic: +150 monthly = +€1,350 MRR
+Total: €1,800 MRR + €9,720 cash
+```
 
-## SUMMARY CHECKLIST
+### Month 12:
+```
+MRR: €3,200/month
+Annual revenue: €38,400
+Infrastructure: €0
+Stripe fees: ~€800
+Net profit: €37,600 (95%+ margin!)
+```
 
-### GIGZILLA DEVELOPMENT PROGRESS
-
-**PHASE 1: PROJECT SETUP** ✅
-- [x] Cloudflare Workers environment
-- [x] Stripe account & products
-- [x] Development environment ready
-
-**PHASE 2: BACKEND (CLOUDFLARE WORKERS)** ✅
-- [x] Core license validation API
-- [ ] Add rate limiting & security
-- [ ] Implement offline grace period (JWT)
-
-**PHASE 3: DESKTOP APP** ✅
-- [x] Build authentication UI
-- [x] Build authentication manager
-- [x] Create machine ID system
-- [x] Integrate auth into Electron
-- [x] Build core freelancer UI
-- [x] Implement local SQLite storage
-
-**PHASE 4: STRIPE INTEGRATION** 🔄
-- [x] Create checkout flow
-- [ ] Implement referral system
-- [ ] Add subscription management UI
-
-**PHASE 5: ADVANCED FEATURES** ☐
-- [ ] Implement Auto-Pause Fair Billing
-- [ ] Implement Unified Client Messaging
-- [ ] Build invoice generation
-- [ ] Implement automation system
-- [ ] Add analytics & reports
-
-**PHASE 6: TESTING** ☐
-- [ ] Write Cloudflare Worker tests
-- [ ] Write desktop app tests
-- [ ] Perform integration testing
-- [ ] Security audit
-- [ ] Performance testing
-
-**PHASE 7: DEPLOYMENT** ☐
-- [ ] Deploy Cloudflare Worker to production
-- [ ] Build desktop app installers
-- [ ] Set up auto-update system
-- [ ] Create landing page
-- [ ] Set up analytics & monitoring
-
-**PHASE 8: LAUNCH** ☐
-- [ ] Create documentation
-- [ ] Set up customer support
-- [ ] Launch beta program
-- [ ] Prepare marketing campaign
-- [ ] Implement feedback loop
-
-**PHASE 9: OPTIONAL** ☐
-- [ ] Build mobile companion app
-- [ ] Implement team/agency features
-- [ ] Build integration marketplace
-- [ ] Add AI-powered features
+### Year 2:
+```
+MRR: €6,000/month
+Annual revenue: €72,000
+Net profit: €68,000
+True passive income! 🎉
+```
 
 ---
 
-## HOW TO USE THIS ROADMAP
+## 📁 FILE STRUCTURE
 
-1. **Save this document** as a reference for your entire development journey
-2. **When ready to work on a task**, copy the corresponding "Copy-Paste Prompt" section
-3. **Paste it to Claude** along with any necessary context about your current session
-4. **Claude will execute** that specific task with full context and guide you through implementation
-5. **Mark tasks as complete** by changing ☐ to ✅ as you finish them
-
-The roadmap is designed to be flexible - you can skip optional features or reorder tasks as needed based on your priorities.
+```
+Gigzilla_Local_SaaS/
+├── cloudflare-worker/
+│   ├── src/
+│   │   ├── index.js (Main worker - from ZERO-STORAGE-ARCHITECTURE.md)
+│   │   └── endpoints/
+│   │       ├── verify.js
+│   │       ├── referral-stats.js
+│   │       ├── pause-subscription.js
+│   │       ├── create-portal-session.js
+│   │       └── appsumo-webhook.js
+│   ├── tests/
+│   ├── wrangler.toml
+│   └── package.json
+│
+├── desktop-app/
+│   ├── src/
+│   │   ├── auth/
+│   │   │   ├── auth-manager.js (Email-based, NO license keys!)
+│   │   │   └── activation-screen.html
+│   │   ├── views/
+│   │   │   ├── dashboard.html
+│   │   │   ├── pipeline.html
+│   │   │   ├── clients.html
+│   │   │   ├── money.html
+│   │   │   └── settings.html
+│   │   ├── features/
+│   │   │   ├── auto-pause.js
+│   │   │   ├── referral-manager.js
+│   │   │   ├── invoice-generator.js
+│   │   │   └── payment-matcher.js
+│   │   ├── database/
+│   │   │   ├── schema.sql
+│   │   │   └── db-manager.js
+│   │   ├── automation/
+│   │   │   ├── rules-engine.js
+│   │   │   └── scheduler.js
+│   │   └── integrations/
+│   │       ├── paypal-oauth.js
+│   │       └── stripe-oauth.js
+│   ├── main.js
+│   └── package.json
+│
+├── landing-page/
+│   ├── index.html
+│   ├── css/
+│   ├── js/
+│   │   └── referral-tracker.js
+│   └── assets/
+│
+├── claude_code_version/ (Design docs)
+│   ├── ZERO-STORAGE-ARCHITECTURE.md ⭐
+│   ├── DEPLOYMENT-GUIDE-ZERO-STORAGE.md
+│   ├── APPSUMO-STRATEGY.md
+│   ├── CONVERSATION-SUMMARY.md
+│   └── QUICK-START-SUMMARY.md
+│
+└── DEVELOPMENT-ROADMAP.md (This file)
+```
 
 ---
 
-## CURRENT ARCHITECTURE
+## 🔑 KEY ARCHITECTURAL DECISIONS
 
-**Backend:** Cloudflare Workers (serverless)
-**Database:** Neon PostgreSQL (serverless)
-**Desktop:** Electron with SQLite (local-first)
-**Payments:** Stripe
-**Deployment:** €0 infrastructure cost, 95%+ margins
+### ✅ CONFIRMED:
+
+1. **NO DATABASE** - Stripe is your only database
+2. **Email-based auth** - No license keys, no machine IDs
+3. **Unlimited devices** - No device tracking
+4. **7-day offline grace** - JWT tokens
+5. **Zero-storage referrals** - Client-side + Stripe metadata
+6. **Auto-Pause Fair Billing** - Primary differentiator
+7. **Local-first desktop app** - All user data on their machine
+8. **€0 infrastructure** - Cloudflare free tier
+9. **95%+ margins** - Minimal costs
+10. **True passive income** - Set it and forget it
+
+### ❌ EXPLICITLY REJECTED:
+
+1. ~~PostgreSQL database~~ → Stripe only
+2. ~~License keys + machine IDs~~ → Email-based
+3. ~~Device limits~~ → Unlimited
+4. ~~Server-based referral tracking~~ → Client-side + metadata
+5. ~~Complex rate limiting~~ → Cloudflare handles it
+6. ~~Storing OAuth tokens in SQLite~~ → Security risk
 
 ---
 
-**Good luck building Gigzilla! 🦍🚀**
+## 🚀 NEXT STEPS (START HERE!)
+
+### Week 1:
+1. Read `claude_code_version/ZERO-STORAGE-ARCHITECTURE.md` (Critical!)
+2. Copy Worker code to `cloudflare-worker/src/index.js`
+3. Deploy Worker: `wrangler deploy`
+4. Test `/verify` endpoint
+
+### Week 2:
+1. Update desktop app authentication (email-based)
+2. Remove license key logic
+3. Test trial signup flow
+4. Implement Auto-Pause Fair Billing
+
+### Week 3:
+1. Build landing page
+2. Deploy to Cloudflare Pages
+3. Test referral tracking
+4. Create demo video
+
+### Week 4:
+1. Beta testing (30-50 users)
+2. Collect feedback
+3. Fix critical bugs
+4. Prepare Product Hunt launch
+
+### Month 2-3:
+1. Public launch
+2. AppSumo launch
+3. Reach first 100 customers
+4. Celebrate! 🎉
+
+---
+
+## 💡 CRITICAL REMINDERS
+
+1. **Read ZERO-STORAGE-ARCHITECTURE.md first!**
+   - This is your Bible
+   - Everything is explained there
+   - Complete Worker code already written
+
+2. **NO database!**
+   - If you find yourself creating database tables for customers/subscriptions
+   - STOP! You're doing it wrong
+   - Stripe stores everything
+
+3. **Email-based auth!**
+   - If you're generating license keys
+   - STOP! Wrong approach
+   - Just verify email in Stripe
+
+4. **Unlimited devices!**
+   - If you're tracking device counts
+   - STOP! Not needed
+   - Same email works everywhere
+
+5. **Keep it simple!**
+   - Zero-storage = zero complexity
+   - Less code = less bugs
+   - Focus on features, not infrastructure
+
+---
+
+## 📚 ESSENTIAL READING
+
+**MUST READ (In order):**
+1. `claude_code_version/ZERO-STORAGE-ARCHITECTURE.md` ⭐⭐⭐
+2. `claude_code_version/DEPLOYMENT-GUIDE-ZERO-STORAGE.md`
+3. `claude_code_version/APPSUMO-STRATEGY.md`
+4. `claude_code_version/QUICK-START-SUMMARY.md`
+
+---
+
+## 🎉 YOU'RE READY!
+
+This roadmap gives you a complete path to:
+- ✅ Zero-storage SaaS architecture
+- ✅ €0 infrastructure costs
+- ✅ 95%+ profit margins
+- ✅ True passive income
+- ✅ Unique competitive advantages
+
+**Total setup time: ~2 hours**
+**Monthly maintenance: ~0 hours**
+**Time to first customer: 2-4 weeks**
+
+**Now go build Gigzilla!** 🦍💰✨
