@@ -1,5 +1,188 @@
 # GIGZILLA - ZERO-STORAGE DEVELOPMENT ROADMAP
 
+---
+
+## 🚀 CONTEXT & ONBOARDING (UPDATED: 2025-11-16)
+
+**Start here if joining mid-development or switching chat sessions.**
+
+This section provides essential context for continuing development work without losing critical architectural decisions and current progress.
+
+### 🎯 CURRENT ARCHITECTURE STATE
+
+**Core Architecture:**
+- **Zero-Storage Design**: Stripe is the ONLY database (no PostgreSQL, no custom DB)
+- **Email-Based Authentication**: NO license keys, NO machine IDs
+- **Cloudflare Workers**: Serverless API endpoints (€0 infrastructure)
+- **Local-First Desktop App**: All user data stored locally (SQLite)
+
+**CRITICAL ARCHITECTURE DECISION (2025-11-15):**
+After identifying that automation doesn't work with local-only storage (PC must be on), we pivoted to include ALL critical features in the base €9/month plan:
+
+- ✅ **Device Authorization**: 3 devices per subscription (prevents abuse, reasonable for one person)
+- ✅ **Cloud Sync**: Google Drive for encrypted cloud storage (free tier, no cost)
+- ✅ **Cloud Automation**: Cloudflare Cron for 24/7 email reminders (works when PC is off)
+- ✅ **Still €0 Infrastructure**: Everything runs on free tiers
+
+**Why This Decision:**
+1. **Automation chaos on unsynced devices**: Multiple devices running same automation = duplicate emails, conflicts
+2. **PC off = no automation**: Local-first can't send reminders when computer is turned off
+3. **User feedback**: "both these features are critical and have to be in the base version"
+
+**Device Limit Rationale:**
+- 3 devices prevents sharing while allowing legitimate multi-device use (desktop + laptop + backup)
+- Local data makes sharing impractical (empty database on new device)
+- Device linking with 6-digit codes (1-hour expiry)
+
+### ✅ WHAT'S BEEN COMPLETED
+
+**Phase 1: Authentication Cleanup**
+- ✅ Removed ALL old authentication code (615 lines from main.js)
+- ✅ Deleted entire `desktop-app-auth/` directory
+- ✅ Removed auth IPC channels from preload.js
+- ✅ Removed license validation polling from upgrade-flow.js
+- ✅ App now starts directly without authentication (clean slate!)
+
+**Phase 2: Cloudflare Worker**
+- ✅ Implemented simplified zero-storage Worker (334 lines)
+- ✅ Email-based subscription verification (POST /verify)
+- ✅ JWT token generation (7-day offline grace period)
+- ✅ Referral system (zero-storage via Stripe metadata)
+- ✅ Stripe webhook handling
+- ✅ All code from ZERO-STORAGE-ARCHITECTURE.md lines 267-589
+
+**Phase 3: Environment Variables**
+- ✅ Generated JWT secret: `e76ryZuV87Km3A8qw4/Oy2HNUar6vfY/zsh18Bzfip8=`
+- ✅ Created DEPLOYMENT-GUIDE.md (complete walkthrough)
+- ✅ Created QUICK-START.md (Windows-friendly, uses local wrangler)
+- ✅ Created SECRETS.md (gitignored quick reference)
+
+### 🔄 CURRENT STATUS
+
+**Awaiting Deployment:**
+1. Deploy Cloudflare Worker: `npx wrangler deploy`
+2. Configure Stripe webhook
+3. Add all three secrets (JWT_SECRET, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET)
+
+**Next Implementation:**
+1. Device Authorization (3 devices, link codes)
+2. Google Drive Cloud Sync (encrypted)
+3. Cloud Automation (Cloudflare Cron)
+4. New Email-Based Auth UI
+
+### 🔑 KEY TECHNICAL DETAILS
+
+**Generated Secrets:**
+- JWT_SECRET: `e76ryZuV87Km3A8qw4/Oy2HNUar6vfY/zsh18Bzfip8=`
+- STRIPE_SECRET_KEY: Get from https://dashboard.stripe.com/test/apikeys
+- STRIPE_WEBHOOK_SECRET: Get after creating webhook
+
+**Cloudflare Worker Endpoints:**
+- POST /verify - Email → check Stripe → return JWT
+- POST /referral-stats - Get user's referral count
+- POST /webhook/stripe - Process Stripe events
+
+**Future Endpoints (To Be Implemented):**
+- POST /link-device - Generate 6-digit link code
+- POST /verify-link-code - Verify device link code
+- GET /devices - List authorized devices
+- DELETE /device/:id - Deauthorize device
+
+**Worker URL:** (to be deployed) `https://gigzilla-api.<your-subdomain>.workers.dev`
+
+### 📋 IMPLEMENTATION PRIORITIES
+
+**Phase 1: Device Authorization (Week 3) - 10-15 hours**
+- Create device marker files (`.gigzilla/.device`)
+- Implement 6-digit link code generation (1-hour expiry)
+- Build warning modal for new device activation
+- Add "Add Device" button in Settings
+- Create Worker endpoints for device management
+- Build device list UI
+
+**Phase 2: Cloud Sync (Week 4-5) - 30-40 hours**
+- Google Drive OAuth integration
+- Encrypted sync layer (AES-256)
+- Conflict resolution logic
+- Auto-sync on app open/close
+- Manual sync button
+- Sync status indicator
+
+**Phase 3: Cloud Automation (Week 6) - 20-30 hours**
+- Cloudflare scheduled events (cron every hour)
+- Email reminder logic (3 days before, on due, overdue)
+- Google Drive data reading in Worker
+- SendGrid/Mailgun email integration (100 emails/day free)
+- Automation logs and status
+
+**Phase 4: Desktop App Integration (Week 7-8)**
+- NEW `desktop-app/src/auth/auth-manager.js` (email-based)
+- NEW `desktop-app/src/auth/activation-screen.html` (email input only)
+- Update `desktop-app/main.js` to use new auth
+- Device linking flow UI
+- Google Drive connection UI
+
+### 🎓 ARCHITECTURAL LESSONS LEARNED
+
+**Why Not Unlimited Devices?**
+- Initially considered unlimited (local data prevents sharing)
+- Realized unsynced devices create automation chaos
+- Multiple devices sending duplicate emails = bad UX
+- Solution: Device limit + cloud sync = consistent automation
+
+**Why Cloud Automation in Base Plan?**
+- Invoice reminders are critical for freelancers
+- Can't rely on PC being on 24/7
+- Cloudflare Cron is free (scheduled events)
+- SendGrid/Mailgun free tier = 100 emails/day
+- Still maintains €0 infrastructure cost
+
+**Why Google Drive vs Custom Cloud Storage?**
+- Google Drive API is free
+- 15GB free storage per user
+- User owns their data (GDPR friendly)
+- No server costs for us
+- Easy OAuth integration
+
+### 📁 FILES TO BE CREATED (Next Steps)
+
+**Device Authorization:**
+- `cloudflare-worker/src/endpoints/link-device.js`
+- `cloudflare-worker/src/endpoints/verify-link-code.js`
+- `desktop-app/src/features/device-manager.js`
+- `desktop-app/src/components/device-linking-modal.html`
+
+**Cloud Sync:**
+- `desktop-app/src/integrations/google-drive-oauth.js`
+- `desktop-app/src/sync/sync-manager.js`
+- `desktop-app/src/sync/encryption.js`
+- `desktop-app/src/components/sync-status.html`
+
+**Cloud Automation:**
+- `cloudflare-worker/src/cron/email-reminders.js`
+- `cloudflare-worker/src/integrations/sendgrid.js`
+- `desktop-app/src/automation/cloud-automation.js`
+
+### 🚨 CRITICAL REMINDERS
+
+1. **NO Database**: If creating customer/subscription tables → STOP! Use Stripe.
+2. **Email-Based Auth**: If generating license keys → STOP! Just verify email in Stripe.
+3. **3-Device Limit**: Track device count in Stripe subscription metadata
+4. **Cloud Sync**: All user data encrypted before uploading to Google Drive
+5. **Automation**: Runs on Cloudflare Cron, reads from synced Google Drive data
+
+### 💡 WHY THIS MATTERS
+
+This architecture enables:
+- €9/month price point (competitive)
+- 95%+ profit margins (€0 infrastructure)
+- True passive income (minimal maintenance)
+- Premium features in base plan (competitive advantage)
+- No database costs (Stripe + Google Drive free tiers)
+- GDPR compliant (user owns data in their Google Drive)
+
+---
+
 **Architecture:** Zero-Storage (Stripe as Database + Cloudflare Workers)
 
 **Philosophy:**
@@ -30,7 +213,7 @@ Your Stripe products are set up correctly with trial periods.
 
 ---
 
-## 📊 CURRENT SESSION PROGRESS (Updated: 2025-11-15)
+## 📊 CURRENT SESSION PROGRESS (Updated: 2025-11-16)
 
 ### ✅ COMPLETED THIS SESSION:
 1. **Task 2.2** - Implemented simplified Cloudflare Worker (334 lines)
@@ -53,16 +236,24 @@ Your Stripe products are set up correctly with trial periods.
    - Deleted entire desktop-app-auth/ directory
    - App now starts directly without authentication (clean slate!)
 
+4. **ROADMAP DOCUMENTATION** - Updated with new architecture ✅
+   - Added comprehensive onboarding/context section (serves as contextual glue)
+   - Documented critical architecture pivot (device auth + cloud sync + automation in base plan)
+   - Added Tasks 3.2a-3.2d with complete implementation prompts
+   - Included architectural lessons learned and rationale
+   - Listed all files to be created with code examples
+
 ### 🔄 IN PROGRESS:
 - **Task 2.4** - Configure Stripe Webhook (awaiting deployment)
 
 ### ☐ NEXT STEPS:
 1. Deploy Cloudflare Worker (`npx wrangler deploy`)
 2. Set up Stripe webhook endpoint
-3. Implement new email-based authentication (Task 3.2)
-   - Create NEW auth-manager.js (email-based, JWT tokens)
-   - Create NEW activation-screen.html (email input only)
-   - No license keys, no device limits!
+3. Implement Tasks 3.2a-3.2d (device auth + cloud sync + automation)
+   - Task 3.2a: Device Authorization (3-device limit, link codes)
+   - Task 3.2b: Google Drive Cloud Sync (encrypted)
+   - Task 3.2c: Cloud Automation (24/7 email reminders)
+   - Task 3.2d: Email-Based Auth UI (integrates all above)
 
 ---
 
@@ -192,58 +383,878 @@ You've built the modern liquid glass activation screen.
 
 ---
 
-### ☐ Task 3.2: Implement Email-Based Authentication (NO LICENSE KEYS!)
+### ☐ Task 3.2a: Implement Device Authorization (3-Device Limit)
 
-**CRITICAL:** Create NEW email-based authentication system (old system fully removed in Task 3.0).
+**NEW ARCHITECTURE:** Device authorization with link codes to prevent sharing while enabling multi-device use.
 
 **Copy-Paste Prompt:**
 ```
-Create NEW email-based authentication system with UNLIMITED devices:
+Implement device authorization system with 3-device limit:
 
-NOTE: Old authentication system has been completely removed (Task 3.0).
-We're building from scratch with a simpler, better approach.
+CONTEXT:
+- After realizing automation doesn't work with unlimited unsynced devices
+- Pivoted to 3-device limit + cloud sync for consistent automation
+- Device linking uses 6-digit codes (1-hour expiry)
+- Still €0 infrastructure (tracked in Stripe metadata)
+
+WORKER ENDPOINTS TO CREATE:
+
+1. POST /link-device endpoint (cloudflare-worker/src/endpoints/link-device.js):
+   ```javascript
+   async function handleLinkDevice(request, env, stripe, corsHeaders) {
+     const { email } = await request.json();
+
+     // Find customer in Stripe
+     const customers = await stripe.customers.list({ email, limit: 1 });
+     if (customers.data.length === 0) {
+       return jsonResponse({ error: 'NO_CUSTOMER' }, 404, corsHeaders);
+     }
+
+     // Generate 6-digit code
+     const linkCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+     // Store in Stripe metadata with expiry (1 hour)
+     const expiresAt = Date.now() + (60 * 60 * 1000); // 1 hour
+     await stripe.customers.update(customers.data[0].id, {
+       metadata: {
+         pending_link_code: linkCode,
+         link_code_expires: expiresAt.toString()
+       }
+     });
+
+     return jsonResponse({ linkCode }, 200, corsHeaders);
+   }
+   ```
+
+2. POST /verify-link-code endpoint (cloudflare-worker/src/endpoints/verify-link-code.js):
+   ```javascript
+   async function handleVerifyLinkCode(request, env, stripe, corsHeaders) {
+     const { email, linkCode, deviceId } = await request.json();
+
+     // Find customer
+     const customers = await stripe.customers.list({ email, limit: 1 });
+     const customer = customers.data[0];
+
+     // Verify link code
+     const storedCode = customer.metadata.pending_link_code;
+     const expiresAt = parseInt(customer.metadata.link_code_expires || '0');
+
+     if (storedCode !== linkCode) {
+       return jsonResponse({ error: 'INVALID_CODE' }, 400, corsHeaders);
+     }
+
+     if (Date.now() > expiresAt) {
+       return jsonResponse({ error: 'CODE_EXPIRED' }, 400, corsHeaders);
+     }
+
+     // Get current devices (stored in subscription metadata)
+     const subscriptions = await stripe.subscriptions.list({
+       customer: customer.id,
+       status: 'active',
+       limit: 1
+     });
+
+     const devices = JSON.parse(
+       subscriptions.data[0].metadata.authorized_devices || '[]'
+     );
+
+     // Check device limit (3 devices)
+     if (devices.length >= 3 && !devices.includes(deviceId)) {
+       return jsonResponse({
+         error: 'DEVICE_LIMIT_REACHED',
+         devices: devices.length
+       }, 403, corsHeaders);
+     }
+
+     // Add device if not already authorized
+     if (!devices.includes(deviceId)) {
+       devices.push(deviceId);
+       await stripe.subscriptions.update(subscriptions.data[0].id, {
+         metadata: {
+           authorized_devices: JSON.stringify(devices)
+         }
+       });
+     }
+
+     // Clear pending link code
+     await stripe.customers.update(customer.id, {
+       metadata: {
+         pending_link_code: '',
+         link_code_expires: ''
+       }
+     });
+
+     return jsonResponse({
+       success: true,
+       deviceCount: devices.length
+     }, 200, corsHeaders);
+   }
+   ```
+
+3. GET /devices endpoint (cloudflare-worker/src/endpoints/list-devices.js):
+   - List all authorized devices for a user
+   - Return device IDs and authorization dates
+
+4. DELETE /device/:id endpoint (cloudflare-worker/src/endpoints/remove-device.js):
+   - Remove device from authorized list
+   - Allow user to manage devices
+
+DESKTOP APP IMPLEMENTATION:
+
+1. Device marker file (desktop-app/src/features/device-manager.js):
+   ```javascript
+   const fs = require('fs');
+   const path = require('path');
+   const crypto = require('crypto');
+
+   class DeviceManager {
+     constructor() {
+       this.deviceFilePath = path.join(app.getPath('userData'), '.gigzilla', '.device');
+     }
+
+     // Get or create device ID
+     getDeviceId() {
+       if (fs.existsSync(this.deviceFilePath)) {
+         return fs.readFileSync(this.deviceFilePath, 'utf8');
+       }
+
+       // Generate new device ID
+       const deviceId = crypto.randomBytes(16).toString('hex');
+       fs.mkdirSync(path.dirname(this.deviceFilePath), { recursive: true });
+       fs.writeFileSync(this.deviceFilePath, deviceId);
+       return deviceId;
+     }
+
+     // Check if device is new
+     isNewDevice() {
+       return !fs.existsSync(this.deviceFilePath);
+     }
+
+     // Request link code from Worker
+     async requestLinkCode(email) {
+       const response = await fetch(`${API_URL}/link-device`, {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({ email })
+       });
+       return await response.json();
+     }
+
+     // Verify link code with Worker
+     async verifyLinkCode(email, linkCode) {
+       const deviceId = this.getDeviceId();
+       const response = await fetch(`${API_URL}/verify-link-code`, {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({ email, linkCode, deviceId })
+       });
+       return await response.json();
+     }
+   }
+   ```
+
+2. Device linking modal (desktop-app/src/components/device-linking-modal.html):
+   - Show warning on new device: "This device is not authorized"
+   - Two options:
+     a) "I have a link code" → Enter 6-digit code
+     b) "Generate link code on another device" → Instructions
+   - Show error if device limit reached (3/3 devices)
+
+3. Settings UI for device management:
+   - List authorized devices (Desktop 1, Laptop, etc.)
+   - Show count: "2/3 devices"
+   - Button: "Add New Device" → Generate link code
+   - Button: "Remove Device" → Deauthorize device
+
+FILES TO CREATE:
+- cloudflare-worker/src/endpoints/link-device.js
+- cloudflare-worker/src/endpoints/verify-link-code.js
+- cloudflare-worker/src/endpoints/list-devices.js
+- cloudflare-worker/src/endpoints/remove-device.js
+- desktop-app/src/features/device-manager.js
+- desktop-app/src/components/device-linking-modal.html
+
+UPDATE IN WORKER:
+- cloudflare-worker/src/index.js (add new routes)
+```
+
+---
+
+### ☐ Task 3.2b: Implement Google Drive Cloud Sync
+
+**NEW ARCHITECTURE:** Encrypted cloud sync to prevent automation chaos across devices.
+
+**Copy-Paste Prompt:**
+```
+Implement Google Drive cloud sync for user data:
+
+CONTEXT:
+- Solves automation chaos (unsynced devices sending duplicate emails)
+- Google Drive is FREE (15GB per user)
+- User owns their data (GDPR compliant)
+- AES-256 encryption before upload
+- Still €0 infrastructure costs
+
+GOOGLE DRIVE OAUTH SETUP:
+
+1. Create OAuth credentials:
+   - Go to: https://console.cloud.google.com
+   - Create project: "Gigzilla"
+   - Enable: Google Drive API
+   - Create OAuth 2.0 credentials (Desktop app)
+   - Get: CLIENT_ID, CLIENT_SECRET
+   - Scopes needed: drive.file (access only to files created by app)
+
+2. Google Drive OAuth integration (desktop-app/src/integrations/google-drive-oauth.js):
+   ```javascript
+   const { google } = require('googleapis');
+   const { app } = require('electron');
+   const path = require('path');
+   const fs = require('fs');
+
+   class GoogleDriveOAuth {
+     constructor() {
+       this.oauth2Client = new google.auth.OAuth2(
+         process.env.GOOGLE_CLIENT_ID,
+         process.env.GOOGLE_CLIENT_SECRET,
+         'http://localhost:3000/oauth/callback'
+       );
+
+       this.tokenPath = path.join(app.getPath('userData'), '.gdrive-token.json');
+     }
+
+     // Generate auth URL
+     getAuthUrl() {
+       return this.oauth2Client.generateAuthUrl({
+         access_type: 'offline',
+         scope: ['https://www.googleapis.com/auth/drive.file']
+       });
+     }
+
+     // Exchange code for token
+     async getToken(code) {
+       const { tokens } = await this.oauth2Client.getToken(code);
+       this.oauth2Client.setCredentials(tokens);
+
+       // Save tokens (encrypted)
+       fs.writeFileSync(this.tokenPath, JSON.stringify(tokens));
+       return tokens;
+     }
+
+     // Load saved tokens
+     loadSavedTokens() {
+       if (fs.existsSync(this.tokenPath)) {
+         const tokens = JSON.parse(fs.readFileSync(this.tokenPath, 'utf8'));
+         this.oauth2Client.setCredentials(tokens);
+         return true;
+       }
+       return false;
+     }
+
+     // Get Drive API client
+     getDrive() {
+       return google.drive({ version: 'v3', auth: this.oauth2Client });
+     }
+   }
+   ```
+
+ENCRYPTION LAYER:
+
+1. Encrypt data before upload (desktop-app/src/sync/encryption.js):
+   ```javascript
+   const crypto = require('crypto');
+
+   class Encryption {
+     constructor(userEmail) {
+       // Derive encryption key from email + JWT secret
+       this.key = crypto.pbkdf2Sync(
+         userEmail,
+         process.env.JWT_SECRET,
+         100000,
+         32,
+         'sha256'
+       );
+     }
+
+     encrypt(data) {
+       const iv = crypto.randomBytes(16);
+       const cipher = crypto.createCipheriv('aes-256-cbc', this.key, iv);
+
+       let encrypted = cipher.update(JSON.stringify(data), 'utf8', 'hex');
+       encrypted += cipher.final('hex');
+
+       return {
+         iv: iv.toString('hex'),
+         data: encrypted
+       };
+     }
+
+     decrypt(encryptedData) {
+       const decipher = crypto.createDecipheriv(
+         'aes-256-cbc',
+         this.key,
+         Buffer.from(encryptedData.iv, 'hex')
+       );
+
+       let decrypted = decipher.update(encryptedData.data, 'hex', 'utf8');
+       decrypted += decipher.final('utf8');
+
+       return JSON.parse(decrypted);
+     }
+   }
+   ```
+
+SYNC MANAGER:
+
+1. Sync manager (desktop-app/src/sync/sync-manager.js):
+   ```javascript
+   class SyncManager {
+     constructor(driveOAuth, encryption) {
+       this.drive = driveOAuth.getDrive();
+       this.encryption = encryption;
+       this.syncFileName = 'gigzilla-data-encrypted.json';
+     }
+
+     // Upload local database to Drive
+     async syncToCloud(dbData) {
+       // Encrypt data
+       const encrypted = this.encryption.encrypt(dbData);
+
+       // Check if file exists
+       const files = await this.drive.files.list({
+         q: `name='${this.syncFileName}'`,
+         spaces: 'drive',
+         fields: 'files(id)'
+       });
+
+       const fileMetadata = { name: this.syncFileName };
+       const media = {
+         mimeType: 'application/json',
+         body: JSON.stringify(encrypted)
+       };
+
+       if (files.data.files.length > 0) {
+         // Update existing file
+         await this.drive.files.update({
+           fileId: files.data.files[0].id,
+           media: media
+         });
+       } else {
+         // Create new file
+         await this.drive.files.create({
+           requestBody: fileMetadata,
+           media: media
+         });
+       }
+     }
+
+     // Download from Drive and merge
+     async syncFromCloud() {
+       const files = await this.drive.files.list({
+         q: `name='${this.syncFileName}'`,
+         spaces: 'drive',
+         fields: 'files(id)'
+       });
+
+       if (files.data.files.length === 0) {
+         return null; // No cloud data yet
+       }
+
+       const response = await this.drive.files.get({
+         fileId: files.data.files[0].id,
+         alt: 'media'
+       });
+
+       // Decrypt data
+       const decrypted = this.encryption.decrypt(response.data);
+       return decrypted;
+     }
+
+     // Conflict resolution (last-write-wins for now)
+     async resolveConflicts(localData, cloudData) {
+       // Simple: Compare timestamps, keep most recent
+       // Advanced: Three-way merge (implement later)
+       return localData.timestamp > cloudData.timestamp ? localData : cloudData;
+     }
+   }
+   ```
+
+DESKTOP APP UI:
+
+1. Sync status indicator (desktop-app/src/components/sync-status.html):
+   - Show sync status: "Synced", "Syncing...", "Offline"
+   - Last sync time: "Last synced: 2 minutes ago"
+   - Manual sync button
+   - Connect Google Drive button (if not connected)
+
+2. Auto-sync triggers:
+   - On app startup: Sync from cloud
+   - On app close: Sync to cloud
+   - Every 5 minutes: Auto-sync if changes detected
+   - On data change: Debounced sync (30 seconds after last change)
+
+FILES TO CREATE:
+- desktop-app/src/integrations/google-drive-oauth.js
+- desktop-app/src/sync/sync-manager.js
+- desktop-app/src/sync/encryption.js
+- desktop-app/src/components/sync-status.html
+
+ENVIRONMENT VARIABLES:
+- GOOGLE_CLIENT_ID (from Google Cloud Console)
+- GOOGLE_CLIENT_SECRET (from Google Cloud Console)
+```
+
+---
+
+### ☐ Task 3.2c: Implement Cloud Automation (24/7 Email Reminders)
+
+**NEW ARCHITECTURE:** Cloudflare Cron for automation that works when PC is off.
+
+**Copy-Paste Prompt:**
+```
+Implement cloud automation for invoice reminders:
+
+CONTEXT:
+- Solves "PC off = no automation" problem
+- Cloudflare Cron triggers every hour (FREE)
+- Reads user data from Google Drive
+- Sends email reminders via SendGrid/Mailgun (100/day free)
+- Still €0 infrastructure costs
+
+CLOUDFLARE CRON SETUP:
+
+1. Update wrangler.toml:
+   ```toml
+   [triggers]
+   crons = ["0 * * * *"]  # Run every hour at minute 0
+   ```
+
+2. Cron handler (cloudflare-worker/src/cron/email-reminders.js):
+   ```javascript
+   async function handleCron(env) {
+     // Get all active subscriptions from Stripe
+     const subscriptions = await stripe.subscriptions.list({
+       status: 'active',
+       limit: 100
+     });
+
+     for (const subscription of subscriptions.data) {
+       const customerId = subscription.customer;
+       const customer = await stripe.customers.retrieve(customerId);
+
+       // Check if user has Google Drive sync enabled
+       const driveFileId = subscription.metadata.gdrive_file_id;
+       if (!driveFileId) continue;
+
+       // Read encrypted data from Google Drive
+       const userData = await readFromGoogleDrive(driveFileId, customer.email, env);
+
+       // Check for overdue invoices
+       const overdueInvoices = userData.invoices.filter(inv => {
+         return inv.status !== 'paid' && new Date(inv.due_date) < new Date();
+       });
+
+       // Check for upcoming due dates (3 days before)
+       const upcomingInvoices = userData.invoices.filter(inv => {
+         const daysUntilDue = Math.floor(
+           (new Date(inv.due_date) - new Date()) / (1000 * 60 * 60 * 24)
+         );
+         return inv.status !== 'paid' && daysUntilDue === 3;
+       });
+
+       // Send reminders
+       for (const invoice of overdueInvoices) {
+         await sendOverdueReminder(customer.email, invoice, env);
+       }
+
+       for (const invoice of upcomingInvoices) {
+         await sendUpcomingReminder(customer.email, invoice, env);
+       }
+     }
+   }
+
+   async function readFromGoogleDrive(fileId, userEmail, env) {
+     // Use service account to read user's shared file
+     // (User grants read access to service account during setup)
+     const response = await fetch(
+       `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+       {
+         headers: {
+           'Authorization': `Bearer ${env.GOOGLE_SERVICE_ACCOUNT_TOKEN}`
+         }
+       }
+     );
+
+     const encrypted = await response.json();
+
+     // Decrypt (same encryption key derivation as desktop app)
+     const decrypted = decrypt(encrypted, userEmail, env.JWT_SECRET);
+     return decrypted;
+   }
+   ```
+
+SENDGRID/MAILGUN INTEGRATION:
+
+1. Email sender (cloudflare-worker/src/integrations/sendgrid.js):
+   ```javascript
+   async function sendEmail(to, subject, html, env) {
+     const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
+       method: 'POST',
+       headers: {
+         'Authorization': `Bearer ${env.SENDGRID_API_KEY}`,
+         'Content-Type': 'application/json'
+       },
+       body: JSON.stringify({
+         personalizations: [{ to: [{ email: to }] }],
+         from: { email: 'reminders@gigzilla.site', name: 'Gigzilla' },
+         subject: subject,
+         content: [{ type: 'text/html', value: html }]
+       })
+     });
+
+     return response.ok;
+   }
+
+   async function sendOverdueReminder(userEmail, invoice, env) {
+     const subject = `Invoice ${invoice.invoice_number} is overdue`;
+     const html = `
+       <h2>Payment Reminder</h2>
+       <p>Hi there,</p>
+       <p>Invoice <strong>${invoice.invoice_number}</strong> for ${invoice.client_name} is now overdue.</p>
+       <p><strong>Amount:</strong> €${invoice.amount}</p>
+       <p><strong>Due Date:</strong> ${invoice.due_date}</p>
+       <p>Consider sending a gentle reminder to your client.</p>
+       <p>- Gigzilla</p>
+     `;
+
+     await sendEmail(userEmail, subject, html, env);
+   }
+
+   async function sendUpcomingReminder(userEmail, invoice, env) {
+     const subject = `Invoice ${invoice.invoice_number} due in 3 days`;
+     const html = `
+       <h2>Upcoming Due Date</h2>
+       <p>Hi there,</p>
+       <p>Invoice <strong>${invoice.invoice_number}</strong> for ${invoice.client_name} is due in 3 days.</p>
+       <p><strong>Amount:</strong> €${invoice.amount}</p>
+       <p><strong>Due Date:</strong> ${invoice.due_date}</p>
+       <p>- Gigzilla</p>
+     `;
+
+     await sendEmail(userEmail, subject, html, env);
+   }
+   ```
+
+DESKTOP APP AUTOMATION SETTINGS:
+
+1. Automation preferences (desktop-app/src/automation/cloud-automation.js):
+   ```javascript
+   class CloudAutomation {
+     constructor() {
+       this.preferences = {
+         enabled: true,
+         reminders: {
+           upcoming: true,      // 3 days before due
+           onDueDate: true,     // On due date
+           overdue: true        // After due date
+         },
+         emailTime: '09:00'     // Preferred time (UTC)
+       };
+     }
+
+     // Save preferences to Google Drive metadata
+     async savePreferences() {
+       await syncManager.updateMetadata({
+         automation_preferences: this.preferences
+       });
+     }
+   }
+   ```
+
+2. Settings UI:
+   - Toggle: "Enable cloud automation"
+   - Checkboxes: Which reminders to send
+   - Time picker: Preferred reminder time
+   - Test button: "Send test reminder"
+
+SETUP FLOW:
+
+1. When user enables cloud automation:
+   - Grant Google Drive access (OAuth)
+   - Share encrypted data file with Gigzilla service account
+   - Save Drive file ID to Stripe metadata
+   - Enable Cron triggers
+
+2. Worker reads automation preferences from Drive metadata
+3. Sends emails based on preferences
+
+FILES TO CREATE:
+- cloudflare-worker/src/cron/email-reminders.js
+- cloudflare-worker/src/integrations/sendgrid.js
+- desktop-app/src/automation/cloud-automation.js
+
+ENVIRONMENT VARIABLES TO ADD:
+- SENDGRID_API_KEY (from SendGrid dashboard)
+- GOOGLE_SERVICE_ACCOUNT_TOKEN (from Google Cloud Console)
+
+UPDATE:
+- wrangler.toml (add cron triggers)
+- cloudflare-worker/src/index.js (add scheduled handler)
+```
+
+---
+
+### ☐ Task 3.2d: Implement Email-Based Authentication UI
+
+**FINAL STEP:** Create NEW email-based authentication system integrating device auth + cloud sync.
+
+**Copy-Paste Prompt:**
+```
+Create NEW email-based authentication system:
+
+NOTE: Old authentication system completely removed (Task 3.0).
+This integrates device authorization + cloud sync from Tasks 3.2a-3.2c.
 
 CREATE NEW FILES:
-1. `desktop-app/src/auth/auth-manager.js` - New email-based auth manager
-2. `desktop-app/src/auth/activation-screen.html` - New email-only activation UI
 
-IMPLEMENTATION:
-1. Email-only authentication flow:
-   - User enters email
-   - App calls Worker: POST /verify { email }
-   - Worker checks Stripe: "Does this email have active subscription?"
-   - Worker returns JWT token (valid 7 days)
-   - App stores JWT locally
+1. Auth manager (desktop-app/src/auth/auth-manager.js):
+   ```javascript
+   const DeviceManager = require('../features/device-manager');
+   const SyncManager = require('../sync/sync-manager');
 
-2. Update activation screen (activation-screen.html):
-   - Remove: "Enter license key" field
-   - Add: "Enter your email" field
-   - Button: "Start Free Trial" (opens Stripe Checkout)
-   - Button: "I Already Subscribed" (verifies email)
+   class AuthManager {
+     constructor() {
+       this.deviceManager = new DeviceManager();
+       this.syncManager = null;
+       this.currentUser = null;
+     }
 
-3. Offline grace period:
-   - JWT token valid for 7 days
-   - After 7 days offline: require online check
-   - Store token + expiry in localStorage
+     // Verify email with Worker
+     async verifyEmail(email) {
+       const response = await fetch(`${API_URL}/verify`, {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({ email })
+       });
 
-4. Unlimited devices:
-   - Same email can activate on ANY device
-   - No device counting
-   - No device limits
-   - JWT tokens are session-based, not device-based
+       const result = await response.json();
 
-Files to CREATE:
-- `desktop-app/src/auth/auth-manager.js` - NEW email-based auth (calls Worker API)
-- `desktop-app/src/auth/activation-screen.html` - NEW email-only UI (no license keys!)
-- Update `desktop-app/main.js` to import and use new auth manager
+       if (!result.hasSubscription) {
+         throw new Error('NO_SUBSCRIPTION');
+       }
 
-NO MORE:
-- ❌ License key generation
-- ❌ Machine ID tracking (desktop-app/src/machine-id.js - already deleted!)
-- ❌ Device limits
-- ❌ Hardware fingerprinting
+       // Check if new device
+       if (this.deviceManager.isNewDevice()) {
+         // Show device linking modal
+         return { needsDeviceLink: true };
+       }
 
-Reference: claude_code_version/ZERO-STORAGE-ARCHITECTURE.md (lines 72-112)
+       // Store JWT token
+       this.storeAuth(email, result.token);
+       this.currentUser = { email, token: result.token };
+
+       // Initialize sync manager
+       await this.initializeSync(email);
+
+       return { success: true };
+     }
+
+     // Handle device linking
+     async linkDevice(email, linkCode) {
+       const result = await this.deviceManager.verifyLinkCode(email, linkCode);
+
+       if (result.error === 'DEVICE_LIMIT_REACHED') {
+         throw new Error('You have reached the 3-device limit. Remove a device first.');
+       }
+
+       return result.success;
+     }
+
+     // Initialize cloud sync
+     async initializeSync(email) {
+       const driveOAuth = new GoogleDriveOAuth();
+
+       if (!driveOAuth.loadSavedTokens()) {
+         // Need to connect Google Drive
+         return { needsGoogleDrive: true };
+       }
+
+       const encryption = new Encryption(email);
+       this.syncManager = new SyncManager(driveOAuth, encryption);
+
+       // Initial sync from cloud
+       await this.syncManager.syncFromCloud();
+     }
+
+     // Store authentication
+     storeAuth(email, token) {
+       const store = new Store({ name: 'gigzilla-auth' });
+       store.set('email', email);
+       store.set('token', token);
+       store.set('tokenExpiry', Date.now() + (7 * 24 * 60 * 60 * 1000));
+     }
+
+     // Check if authenticated
+     isAuthenticated() {
+       const store = new Store({ name: 'gigzilla-auth' });
+       const token = store.get('token');
+       const expiry = store.get('tokenExpiry');
+
+       if (!token || Date.now() > expiry) {
+         return false;
+       }
+
+       return true;
+     }
+   }
+   ```
+
+2. Activation screen (desktop-app/src/auth/activation-screen.html):
+   ```html
+   <!DOCTYPE html>
+   <html>
+   <head>
+     <title>Activate Gigzilla</title>
+     <style>
+       /* Modern activation UI */
+       body {
+         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+         display: flex;
+         justify-content: center;
+         align-items: center;
+         height: 100vh;
+         margin: 0;
+       }
+
+       .activation-card {
+         background: white;
+         border-radius: 16px;
+         padding: 48px;
+         box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+         max-width: 400px;
+         width: 100%;
+       }
+
+       h1 {
+         margin: 0 0 8px 0;
+         font-size: 32px;
+         font-weight: 700;
+       }
+
+       .subtitle {
+         color: #6b7280;
+         margin-bottom: 32px;
+       }
+
+       input[type="email"] {
+         width: 100%;
+         padding: 12px 16px;
+         border: 2px solid #e5e7eb;
+         border-radius: 8px;
+         font-size: 16px;
+         margin-bottom: 16px;
+       }
+
+       .btn {
+         width: 100%;
+         padding: 12px 24px;
+         border: none;
+         border-radius: 8px;
+         font-size: 16px;
+         font-weight: 600;
+         cursor: pointer;
+         margin-bottom: 12px;
+       }
+
+       .btn-primary {
+         background: #667eea;
+         color: white;
+       }
+
+       .btn-secondary {
+         background: white;
+         color: #667eea;
+         border: 2px solid #667eea;
+       }
+     </style>
+   </head>
+   <body>
+     <div class="activation-card">
+       <h1>Welcome to Gigzilla</h1>
+       <p class="subtitle">Manage your freelance business</p>
+
+       <input
+         type="email"
+         id="emailInput"
+         placeholder="your@email.com"
+         autofocus
+       />
+
+       <button class="btn btn-primary" onclick="verifyEmail()">
+         I Already Subscribed
+       </button>
+
+       <button class="btn btn-secondary" onclick="startTrial()">
+         Start Free Trial (14 Days)
+       </button>
+
+       <p style="text-align: center; color: #6b7280; font-size: 14px; margin-top: 24px;">
+         €9/month • 3 devices • Cloud sync included
+       </p>
+     </div>
+
+     <script>
+       async function verifyEmail() {
+         const email = document.getElementById('emailInput').value;
+         const result = await window.electronAPI.auth.verifyEmail(email);
+
+         if (result.needsDeviceLink) {
+           // Show device linking modal
+           showDeviceLinkModal(email);
+         } else if (result.success) {
+           // Authentication successful
+           window.location.href = 'dashboard.html';
+         }
+       }
+
+       function startTrial() {
+         const email = document.getElementById('emailInput').value;
+         window.electronAPI.auth.startTrial(email);
+       }
+
+       function showDeviceLinkModal(email) {
+         // Show modal for device linking (Task 3.2a)
+       }
+     </script>
+   </body>
+   </html>
+   ```
+
+3. Update main.js to use new auth:
+   - Import AuthManager
+   - Check authentication on startup
+   - Show activation screen if not authenticated
+   - Handle device linking flow
+   - Initialize cloud sync after auth
+
+FLOW:
+1. User enters email
+2. Click "I Already Subscribed"
+3. App calls Worker /verify
+4. If new device → Show device linking modal
+5. User enters 6-digit code from another device
+6. Device authorized
+7. Connect Google Drive (if first time)
+8. Sync data from cloud
+9. Launch app
+
+FILES TO CREATE:
+- desktop-app/src/auth/auth-manager.js
+- desktop-app/src/auth/activation-screen.html
+
+UPDATE:
+- desktop-app/main.js (use new auth manager)
 ```
 
 ---
