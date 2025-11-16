@@ -46,21 +46,23 @@ Your Stripe products are set up correctly with trial periods.
    - Created QUICK-START.md (Windows-friendly guide)
    - Created SECRETS.md (quick reference, gitignored)
 
-3. **Task 3.0** - Removed old authentication system from desktop app
+3. **Task 3.0** - Removed old authentication system from desktop app ✅
    - Removed 615 lines from main.js
    - Removed auth IPC channels from preload.js
    - Removed license validation polling from upgrade-flow.js
-   - App now starts directly without authentication
+   - Deleted entire desktop-app-auth/ directory
+   - App now starts directly without authentication (clean slate!)
 
 ### 🔄 IN PROGRESS:
 - **Task 2.4** - Configure Stripe Webhook (awaiting deployment)
-- **Task 3.0** - Complete authentication removal (desktop-app-auth/ directory)
 
 ### ☐ NEXT STEPS:
 1. Deploy Cloudflare Worker (`npx wrangler deploy`)
 2. Set up Stripe webhook endpoint
-3. Complete authentication cleanup (remove desktop-app-auth/)
-4. Implement new email-based authentication (Task 3.2)
+3. Implement new email-based authentication (Task 3.2)
+   - Create NEW auth-manager.js (email-based, JWT tokens)
+   - Create NEW activation-screen.html (email input only)
+   - No license keys, no device limits!
 
 ---
 
@@ -149,9 +151,9 @@ npx wrangler deploy
 
 ## PHASE 3: DESKTOP APP (LOCAL-FIRST)
 
-### 🔄 Task 3.0: Remove Old Authentication System *(IN PROGRESS)*
+### ✅ Task 3.0: Remove Old Authentication System *(COMPLETED)*
 
-**STATUS:** Partially completed - authentication code removal in progress.
+**STATUS:** Fully completed - all old authentication code removed.
 
 **Completed Steps:**
 1. ✅ Removed all authentication code from `desktop-app/main.js` (615 lines removed)
@@ -168,15 +170,19 @@ npx wrangler deploy
 3. ✅ Removed license validation polling from `desktop-app/src/views/upgrade-flow.js`
    - Removed startCheckoutPolling() function
    - Simplified checkCheckoutSuccess() and handleCheckoutSuccess()
+4. ✅ Deleted entire `desktop-app-auth/` directory
+   - Removed old activation screen (license key based)
+   - Removed old auth-manager.js (with license keys, machine IDs, device limits)
 
 **Files Modified:**
 - `desktop-app/main.js` - Reduced from 916 lines to 301 lines
 - `desktop-app/preload.js` - Removed auth IPC channels
 - `desktop-app/src/views/upgrade-flow.js` - Removed license polling
 
-**Next Steps:**
-- Remove or update remaining auth-related files in `desktop-app-auth/` directory
-- Implement new email-based authentication (Task 3.2)
+**Files Deleted:**
+- `desktop-app-auth/` - Entire directory removed
+
+**Result:** App now starts directly without any authentication. Clean slate for new email-based auth.
 
 ---
 
@@ -188,19 +194,20 @@ You've built the modern liquid glass activation screen.
 
 ### ☐ Task 3.2: Implement Email-Based Authentication (NO LICENSE KEYS!)
 
-**CRITICAL:** Remove all license key + machine ID logic. Replace with email-based auth.
+**CRITICAL:** Create NEW email-based authentication system (old system fully removed in Task 3.0).
 
 **Copy-Paste Prompt:**
 ```
-Rewrite authentication to use email-based system with UNLIMITED devices:
+Create NEW email-based authentication system with UNLIMITED devices:
 
-REMOVE COMPLETELY:
-- License key generation
-- Machine ID tracking
-- Device limits (no tracking!)
-- Hardware fingerprinting
+NOTE: Old authentication system has been completely removed (Task 3.0).
+We're building from scratch with a simpler, better approach.
 
-IMPLEMENT:
+CREATE NEW FILES:
+1. `desktop-app/src/auth/auth-manager.js` - New email-based auth manager
+2. `desktop-app/src/auth/activation-screen.html` - New email-only activation UI
+
+IMPLEMENTATION:
 1. Email-only authentication flow:
    - User enters email
    - App calls Worker: POST /verify { email }
@@ -225,10 +232,16 @@ IMPLEMENT:
    - No device limits
    - JWT tokens are session-based, not device-based
 
-Files to modify:
-- desktop-app/src/auth-manager.js
-- desktop-app/src/activation-screen.html
-- Remove: desktop-app/src/machine-id.js (no longer needed!)
+Files to CREATE:
+- `desktop-app/src/auth/auth-manager.js` - NEW email-based auth (calls Worker API)
+- `desktop-app/src/auth/activation-screen.html` - NEW email-only UI (no license keys!)
+- Update `desktop-app/main.js` to import and use new auth manager
+
+NO MORE:
+- ❌ License key generation
+- ❌ Machine ID tracking (desktop-app/src/machine-id.js - already deleted!)
+- ❌ Device limits
+- ❌ Hardware fingerprinting
 
 Reference: claude_code_version/ZERO-STORAGE-ARCHITECTURE.md (lines 72-112)
 ```
